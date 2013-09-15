@@ -1,0 +1,5 @@
+Little Village is an emulator for the Little Man Computer.  See
+<https://en.wikipedia.org/wiki/Little_man_computer>.  This package includes a
+Python class that emulates the computer, some client classes that provide
+different interfaces, and an assembler.
+ 
