@@ -9,7 +9,10 @@ class Batch_Client (lmc.LMC_Client):
     def __init__ (self, program, inputs):
         lmc.LMC_Client.__init__ (self)
         self.inputs = inputs
+        self.outputs = []
         self.computer.load (program)
+
+    def run (self):
         self.computer.run ()
 
     def notify_input (self):
@@ -18,7 +21,7 @@ class Batch_Client (lmc.LMC_Client):
         return int (n)
 
     def notify_output (self, out):
-        print out
+        self.outputs.append (out)
         return True
 
 if __name__ == '__main__':
@@ -28,3 +31,7 @@ if __name__ == '__main__':
         program = sys.argv [1]
         inputs = sys.argv [2:]
         client = Batch_Client (program, inputs)
+        client.run ()
+        for n in client.outputs:
+            print n
+
