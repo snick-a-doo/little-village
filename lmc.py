@@ -24,12 +24,12 @@ class LMC:
         """Initialize memory and registers."""
         self.client = None
         self.memory = 100*[0]
+        self.input = 0
+        self.output = 0
         self.reset ()
 
     def reset (self):
         """Initialize everything except memory."""
-        self.input = 0
-        self.output = 0
         self._set_accumulator (0)
         self.counter = 0
 
@@ -49,7 +49,7 @@ class LMC:
         self.reset ()
         # Give the client a chance to break before the 1st instruction is
         # executed. 
-        if self.client.notify_step ():
+        if not self.client or self.client.notify_step ():
             self.resume ()
 
     def resume (self):
@@ -58,7 +58,7 @@ class LMC:
         Any initialization must be done beforehand.  This can be used to by a
         client to resume after returning False to a notification method.
         """
-        while self.step () and self.client.notify_step ():
+        while self.step () and (not self.client or self.client.notify_step ()):
             pass
 
     def set_input (self, value):
@@ -92,8 +92,8 @@ class LMC:
         go_on = True;
 
         if op == LMC.HLT:
-            self.client.notify_halt ()
-            return False
+            if self.client: self.client.notify_halt ()
+            go_on = False
         if op == LMC.ADD:
             self._set_accumulator (self.accumulator + self.memory [arg])
         elif op == LMC.SUB:
@@ -112,17 +112,22 @@ class LMC:
                 self.counter = arg
         elif op == LMC.IO:
             if arg == 1:
-                response = self.client.notify_input ();
-                # If an integer was returned use it as the input and continue
-                # executing.
-                if type (response) == type (int ()):
-                    self.set_input (response)
-                    go_on = True
+                if self.client:
+                    response = self.client.notify_input ();
+                    # If an integer was returned use it as the input and
+                    # continue executing.
+                    if type (response) == type (int ()):
+                        self.set_input (response)
+                    else:
+                        go_on = response
                 else:
-                    go_on = response
+                    # If there's no client take what's in the input register.
+                    self.set_input (self.input)
+
             elif arg == 2:
                 self.output = self.accumulator
-                go_on = self.client.notify_output (self.output)
+                if self.client:
+                    go_on = self.client.notify_output (self.output)
 
         return go_on
 
