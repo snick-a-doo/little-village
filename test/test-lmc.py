@@ -40,7 +40,7 @@ class Test_Initial (unittest.TestCase):
         self.assertEqual (self.computer.input, 0)
         self.assertEqual (self.computer.output, 0)
         self.assertEqual (self.computer.accumulator, 0)
-        self.assertEqual (self.computer.counter, 1)
+        self.assertEqual (self.computer.counter, 0)
 
 '''
 Test the computer with a small program.
@@ -64,7 +64,7 @@ class Test_Run (unittest.TestCase):
     def test_run (self):
         self.computer.input = 123
         self.computer.run ()
-        self.assertEqual (self.computer.counter, 6)
+        self.assertEqual (self.computer.counter, 5)
         self.assertEqual (self.computer.accumulator, 246)
         self.assertEqual (self.computer.output, 246)
     
@@ -134,6 +134,15 @@ class Test_Break (unittest.TestCase):
         self.client.computer.resume ()
         self.assertEqual (self.client.outputs, [987])
 
+    def test_step_at_end (self):
+        self.client.run ()
+        self.client.computer.resume ()
+        self.assertEqual (self.client.computer.counter, 5)
+        self.client.computer.step ()
+        # Can't step past HLT.
+        self.assertEqual (self.client.computer.counter, 5)
+        self.client.computer.step ()
+        self.assertEqual (self.client.computer.counter, 5)
 
 if __name__ == '__main__':
     unittest.main ()

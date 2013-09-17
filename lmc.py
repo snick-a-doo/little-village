@@ -26,12 +26,10 @@ class LMC:
         self.memory = 100*[0]
         self.input = 0
         self.output = 0
-        self.reset ()
-
-    def reset (self):
-        """Initialize everything except memory."""
-        self._set_accumulator (0)
         self.counter = 0
+        self.accumulator = 0
+        self.overflow = False
+        self.negative = False
 
     def register (self, client):
         """Register the client to be notified when something happens."""
@@ -45,8 +43,13 @@ class LMC:
             self.memory [i] = int (program [i]) % 1000
 
     def run (self):
-        """Start the program from the beginning."""
-        self.reset ()
+        """Start the program from the beginning.
+
+        We only reset the counter, the other registers retain their values.  It
+        is the programmer's responsibility to make sure the code does not depend
+        on previous register values if it is to be re-run.
+        """
+        self.counter = 0
         # Give the client a chance to break before the 1st instruction is
         # executed. 
         if not self.client or self.client.notify_step ():
@@ -93,6 +96,8 @@ class LMC:
 
         if op == LMC.HLT:
             if self.client: self.client.notify_halt ()
+            # Don't step the counter past HLT.
+            self.counter -= 1
             go_on = False
         if op == LMC.ADD:
             self._set_accumulator (self.accumulator + self.memory [arg])
