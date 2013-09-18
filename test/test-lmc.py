@@ -10,10 +10,6 @@ import lmc
 import batch
 import unittest
 
-def program (file):
-    '''Return the path to a program in the programs directory.'''
-    return os.path.join ('..', 'programs', file)
-
 '''
 Check the initial state of the computer.
 '''
@@ -53,7 +49,7 @@ times the input.
 class Test_Run (unittest.TestCase):
     def setUp (self):
         self.computer = lmc.LMC ()
-        self.computer.load (program ('add'))
+        self.computer.load ('add')
 
     def test_loaded (self):
         self.assertEqual (self.computer.memory [0], 901)
@@ -82,7 +78,7 @@ Test the batch client
 class Test_Batch (unittest.TestCase):
     def setUp (self):
         self.inputs = [1, 12, 25, 0]
-        self.client = batch.Batch_Client (program ('square'), self.inputs)
+        self.client = batch.Batch_Client ('square', self.inputs)
 
     def test_run (self):
         self.client.run ()
@@ -110,7 +106,7 @@ class Test_Break (unittest.TestCase):
     def setUp (self):
         self.inputs = [888, 99]
         self.line = 2 # Break before this (0-based) instruction.
-        self.client = Break_Client (program ('add'), self.inputs, self.line)
+        self.client = Break_Client ('add', self.inputs, self.line)
 
     def test_break_and_resume (self):
         self.client.run ()
