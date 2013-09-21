@@ -1,6 +1,5 @@
-#
-# Unit tests for the LMC back-end and clients.
-#
+# test-lmc.py - Unit tests for the LMC back-end and clients.
+
 import os
 import sys
 # Allow importing modules from the parent directory
