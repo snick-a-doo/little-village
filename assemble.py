@@ -19,6 +19,7 @@
 # You should have received a copy of the GNU General Public License along with
 # Little Village.  If not, see <http://www.gnu.org/licenses/>.
 
+import os
 import string
 import sys
 
@@ -37,7 +38,7 @@ class Assembler:
     comment = ';'
 
     # Mnemonic/opcode associations.  For convenience 'DAT' is treated as opcode 0.
-    opcodes = { 'HLT':000, 'ADD':100, 'SUB':200, 'STA':300, 'LAD':500, 
+    opcodes = { 'HLT':000, 'ADD':100, 'SUB':200, 'STA':300, 'LDA':500, 
                 'BRA':600, 'BRZ':700, 'BRP':800, 'INP':901, 'OUT':902,
                 'DAT':000 }
 
@@ -45,8 +46,20 @@ class Assembler:
         # The numeric values of labels are defined in a dictionary.  An empty
         # label is zero.
         self.data = { '':0 }
-        self.errors = []
         self.code = []
+        self.messages = []
+        self.n_errors = 0
+        self.n_warnings = 0
+
+    def add_message (self, fatal, message, line_number, line):
+        severity = ''
+        if fatal:
+            self.n_errors += 1
+            severity = 'Error'
+        else:
+            self.n_warnings += 1
+            severity = 'Warning'
+        self.messages.append ((severity, message, line_number, line))
 
     def interpret_mnemonics (self, program):
         code = []
@@ -71,7 +84,7 @@ class Assembler:
                 try:
                     code.append (self.translate (tokens))
                 except KeyError:
-                    self.errors.append (('Error', 'Unknown mnemonic', line_number, line))
+                    self.add_message (True, 'Unknown mnemonic', line_number, line)
         return code
 
     def translate (self, instruction):
@@ -113,27 +126,47 @@ class Assembler:
         # machine code.
         self.code = self.resolve_labels (code)
 
-        return len (self.errors) == 0
+        return self.n_errors == 0
 
-    def print_program (self):
+    def write_program (self, stream = sys.stdin):
         for line in self.code:
-            print '%03d' % line
+            stream.write ('%03d\n' % line)
 
-    def show_errors (self):
-        for error in self.errors:
-            sys.stderr.write ('%s: %s\nline %-3d: %s\n' % error)
+    def write_messages (self, stream = sys.stderr):
+        for message in self.messages:
+            stream.write ('%s: %s\n  line %-3d: %s\n' % message)
+
+        if self.n_errors > 0 or self.n_warnings > 0:
+            stream.write ('\n%s, %s\n' 
+                          % (count (self.n_errors, 'error'),
+                             count (self.n_warnings, 'warning')))
+
+def count (n, word):
+    '''A helper to format a count of things.
+We assume the word is made plural by adding "s".'''
+    if n != 1: word += 's'
+    return ('%d %s' % (n, word))
+
 
 if __name__ == '__main__':
-    if len (sys.argv) != 2:
-        print 'Usage: assemble.py program'
+    n_args = len (sys.argv)
+    if n_args < 2 or n_args > 3:
+        print 'Usage: assemble.py program [output_file]'
         sys.exit (1)
 
     # Read the whole program into an array.
-    program = open (sys.argv [1], 'r').readlines ()
+    input_file = sys.argv [1]
+    program = open (input_file, 'r').readlines ()
+
+    output_stream = sys.stdout
+    output_file = os.path.splitext (input_file)[0]
+    if n_args > 2:
+        output_file = sys.argv [2]
+    if output_file != '' and output_file != '-':
+        output_stream = open (output_file, 'w')
+
     asm = Assembler ()
     if asm.assemble (program):
-        asm.print_program ()
+        asm.write_program (output_stream)
     else:
-        asm.show_errors ()
-
-
+        asm.write_messages ()
