@@ -20,7 +20,7 @@ class Test_Assemble (unittest.TestCase):
 
     def messages (self):
         messages = StringIO.StringIO ()
-        self.asm.write_messages (messages)
+        self.asm.messages.write (messages)
         return messages.getvalue ()
 
     def test_empty (self):
@@ -88,7 +88,7 @@ class Test_Assemble (unittest.TestCase):
                           '0 errors, 1 warning\n')
 
     def test_too_many_errors (self):
-        self.asm.max_errors = 4
+        self.asm.messages.max_errors = 4
         program = [ 'MOO', 'WEE', 'ZIP', 'TOP', 'BAG' ]
         self.assertFalse (self.asm.assemble (program))
         messages = string.split (self.messages (), '\n')

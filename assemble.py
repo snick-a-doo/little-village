@@ -39,7 +39,60 @@ import sys
 #   Jump to data
 #   Unlabeled data
 
-class Abort: pass
+def count (n, word):
+    '''A helper to format a count of things.
+We assume the word is made plural by adding "s".'''
+    if n != 1: word += 's'
+    return ('%d %s' % (n, word))
+
+'''
+An exception that stops processing.
+'''
+
+class Abort (Exception): pass
+
+'''
+A class for collecting and displaying warnings and error messages.
+'''
+
+class Message_Queue:
+    def __init__ (self, max_errors):
+        self.messages = []
+        self.n_errors = 0
+        self.n_warnings = 0
+        self.max_errors = max_errors 
+
+    def add (self, fatal, message, line_number = -1, line = ''):
+        severity = ''
+        if fatal:
+            self.n_errors += 1
+            severity = 'Error'
+        else:
+            self.n_warnings += 1
+            severity = 'Warning'
+        self.messages.append ((severity, message, line_number, line))
+        if self.n_errors == self.max_errors:
+            self.add (True, '%d errors.  Quitting.' % self.max_errors)
+            raise Abort
+
+    def has_error (self):
+        return self.n_errors > 0
+
+    def write (self, stream = sys.stderr):
+        for message in self.messages:
+            if message[2] < 0:
+                stream.write ('%s: %s\n' % message[:2])
+            else:
+                stream.write ('%s: %s\n  line %-3d: %s\n' % message)
+
+        if self.n_errors > 0 or self.n_warnings > 0:
+            stream.write ('\n%s, %s\n' 
+                          % (count (self.n_errors, 'error'),
+                             count (self.n_warnings, 'warning')))
+
+'''
+A class that handles converting assembly language code to machine language.
+'''
 
 class Assembler:
     # Ignore everything from this string to the end of the line in input files.
@@ -52,30 +105,13 @@ class Assembler:
                 'BRA':(600, 1, 0), 'BRZ':(700, 1, 0), 'BRP':(800, 1, 0),
                 'INP':(901, 0, 0), 'OUT':(902, 0, 0) }
 
-    max_errors = 10
-
     def __init__ (self):
         # The numeric values of labels are defined in a dictionary.  An empty
         # label is zero.
         self.data = { '':(0, 0, 1) }
         self.code = []
         self.has_halt = False
-        self.messages = []
-        self.n_errors = 0
-        self.n_warnings = 0
-
-    def add_message (self, fatal, message, line_number = -1, line = ''):
-        severity = ''
-        if fatal:
-            self.n_errors += 1
-            severity = 'Error'
-        else:
-            self.n_warnings += 1
-            severity = 'Warning'
-        self.messages.append ((severity, message, line_number, line))
-        if self.n_errors == self.max_errors:
-            self.add_message (True, '%d errors.  Quitting.' % self.max_errors)
-            raise Abort
+        self.messages = Message_Queue (10)
 
     def interpret_mnemonics (self, program):
         code = []
@@ -87,77 +123,84 @@ class Assembler:
             # Split the line into tokens.
             tokens = string.split (line)
             # Ignore empty lines.
-            n = len (tokens)
-            if n > 0:
-                if n > 1 and not self.opcodes.has_key (tokens[0]):
-                    if not self.opcodes.has_key (tokens [1]):
-                        self.add_message (True, 'Unknown mnemonic', line_number, line)
-                        continue
-                    else:
-                        # If the 1st token is not a mnemonic assume it's a
-                        # label.  Its value is the memory location of the
-                        # instruction, which is the same as the number of
-                        # instructions processed so far.
-                        self.data [tokens[0]] = (len (code), line_number, 0)
-                        # Remove the label from the token list.
-                        tokens = tokens[1:]
-                        # Interpret the instruction (possibly after label removal).
-                try:
-                    (op, arg) = self.translate (tokens, line_number, line)
-                    if arg != '' and self.opcodes.has_key (arg):
-                        self.add_message (True, 
-                                          'Label must not be the same as a mnemonic',
-                                          line_number,
-                                          line)
-                        # Clear the argument so we continue examining the code.
-                        arg = ''
-                    code.append ((op, arg))
-                except KeyError:
-                    self.add_message (True, 'Unknown mnemonic', line_number, line)
-                if len (code) > 100:
-                    self.add_message (True, 'Program too long', line_number, line)
-                    break
+            if tokens == []: continue
+
+            (label, mnemonic, arguments) = self.parse (tokens, line_number, line)
+
+            if mnemonic == '': continue
+
+            if label != '':
+                self.data [label] = (len (code), line_number, 0)
+
+            # Interpret the instruction.
+            code.append (self.translate (mnemonic, arguments, line_number, line))
+
+            if len (code) > 100:
+                self.messages.add (True, 'Program too long', line_number, line)
+                raise Abort
+
         return code
 
-    def translate (self, instruction, line_number, line):
-        if instruction[0] == 'HLT':
+    def parse (self, tokens, line_number, line):
+        n = len (tokens)
+        label = ''
+        mnemonic = ''
+        arguments = []
+        if self.opcodes.has_key (tokens[0]):
+            mnemonic = tokens[0]
+            if n > 1:
+                arguments = tokens[1:]
+        elif (n > 1) and self.opcodes.has_key (tokens[1]):
+            label = tokens[0]
+            mnemonic = tokens[1]
+            if n > 2:
+                arguments = tokens[2:]
+        else:
+            self.messages.add (True, 'Unknown mnemonic', line_number, line)
+
+        if len (arguments) > 0 and self.opcodes.has_key (arguments[0]):
+            self.messages.add (True, 
+                               'Label must not be the same as a mnemonic',
+                               line_number,
+                               line)
+            mnemonic = ''
+
+        if mnemonic == 'HLT':
             self.has_halt = True
 
+        return (label, mnemonic, arguments)
+
+    def translate (self, mnemonic, argument, line_number, line):
         # Get the machine code for the mnemonic
-        opcode = self.opcodes [instruction[0]]
-        op = opcode[0]
+        (op, n_required, n_optional) = self.opcodes [mnemonic]
 
         # Use the empty string if there's no argument.
         arg = ''
-        n_args = len (instruction[1:])
-        if n_args != opcode[1]:
-                self.add_message (True, 
-                                  ('%s requires %s, %d given'
-                                   % (instruction[0], 
-                                      count (opcode[1], 'argument'),
-                                      n_args)),
-                                  line_number,
-                                  line)
-        elif len (instruction) > 1:
-            arg = instruction[1]
+        n_args = len (argument)
+        if n_args != n_required:
+            self.messages.add (True, 
+                               ('%s requires %s, %d given'
+                                % (mnemonic, count (n_required, 'argument'), n_args)),
+                               line_number,
+                               line)
+        elif len (argument) > 0:
+            arg = argument[0]
         return (op, arg)
 
     def resolve_labels (self, code):
         out = []
-        for line in code:
+        for (op, label) in code:
             arg = 0
             try:
                 # Try to find the value for the (possibly empty) argument
                 # label...
-                label = line[1]
-                (value, line_n, refs) = self.data [label]
-                arg = value
-                self.data [label] = (value, line_n, refs + 1)
+                (arg, line_n, refs) = self.data [label]
+                self.data [label] = (arg, line_n, refs + 1)
             except KeyError:
                 # ...if that fails try to treat the argument as a number.
-                arg = int (line[1])
+                arg = int (label)
                 # Add the numeric argument to the machine code.
-            out.append (line[0] + arg)
+            out.append (op + arg)
         return out
 
     def assemble (self, program):
@@ -178,35 +221,16 @@ class Assembler:
             for label in self.data:
                 (value, line, refs) = self.data[label]
                 if refs == 0:
-                    self.add_message (False, 'Unused label', line, program [line - 1])
+                    self.messages.add (False, 'Unused label', line, program [line - 1])
 
             if not self.has_halt:
-                self.add_message (False, 'No HLT instruction in input')
+                self.messages.add (False, 'No HLT instruction in input')
 
-        return self.n_errors == 0
+        return not self.messages.has_error ()
 
     def write_program (self, stream = sys.stdin):
         for line in self.code:
             stream.write ('%03d\n' % line)
-
-    def write_messages (self, stream = sys.stderr):
-        for message in self.messages:
-            if message[2] < 0:
-                stream.write ('%s: %s\n' % message[:2])
-            else:
-                stream.write ('%s: %s\n  line %-3d: %s\n' % message)
-
-        if self.n_errors > 0 or self.n_warnings > 0:
-            stream.write ('\n%s, %s\n' 
-                          % (count (self.n_errors, 'error'),
-                             count (self.n_warnings, 'warning')))
-
-def count (n, word):
-    '''A helper to format a count of things.
-We assume the word is made plural by adding "s".'''
-    if n != 1: word += 's'
-    return ('%d %s' % (n, word))
-
 
 if __name__ == '__main__':
     n_args = len (sys.argv)
@@ -229,4 +253,4 @@ if __name__ == '__main__':
     if asm.assemble (program):
         asm.write_program (output_stream)
     else:
-        asm.write_messages ()
+        asm.messages.write ()
