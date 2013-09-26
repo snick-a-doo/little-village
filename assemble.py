@@ -30,7 +30,8 @@ import sys
 #   Undefined label
 #  * Too long
 #  * Label matches mnemonic
-#   Too many errors
+#  * Too many errors
+#   Duplicate label
 #
 # Warnings:
 #  * Unused label
@@ -91,6 +92,49 @@ class Message_Queue:
                              count (self.n_warnings, 'warning')))
 
 '''
+A program label and associated information.
+'''
+
+class Label_Entry:
+    def __init__ (self, value, line_number):
+        self.value = value
+        self.line_number = line_number
+        self.references = 0
+
+    def get (self):
+        self.references += 1
+        return self.value
+
+'''
+A lookup table for program labels.
+'''
+
+class Lookup:
+    def __init__ (self):
+        self.table = {}
+
+    def set (self, name, value, line_number):
+        self.table [name] = Label_Entry (value, line_number)
+
+    def get (self, name):
+        # The empty name has a value of zero.
+        if name == '':
+            return 0
+        if self.table.has_key (name):
+            return self.table [name].get ()
+        # If it's not empty and not in the dictionary return its integer
+        # representation.  Will raise ValueError if it doesn't have one.
+        return int (name)
+
+    def unused (self):
+        out = []
+        for label in self.table:
+            entry = self.table [label]
+            if entry.references == 0:
+                out.append (entry)
+        return out
+
+'''
 A class that handles converting assembly language code to machine language.
 '''
 
@@ -106,9 +150,8 @@ class Assembler:
                 'INP':(901, 0, 0), 'OUT':(902, 0, 0) }
 
     def __init__ (self):
-        # The numeric values of labels are defined in a dictionary.  An empty
-        # label is zero.
-        self.data = { '':(0, 0, 1) }
+        # Make a lookup table for the labels.
+        self.labels = Lookup ()
         self.code = []
         self.has_halt = False
         self.messages = Message_Queue (10)
@@ -123,22 +166,20 @@ class Assembler:
             # Split the line into tokens.
             tokens = string.split (line)
             # Ignore empty lines.
-            if tokens == []: continue
-
+            if tokens == []:
+                continue
             (label, mnemonic, arguments) = self.parse (tokens, line_number, line)
-
-            if mnemonic == '': continue
-
+            if mnemonic == '':
+                continue
             if label != '':
-                self.data [label] = (len (code), line_number, 0)
-
+                self.labels.set (label, len (code), line_number)
             # Interpret the instruction.
             code.append (self.translate (mnemonic, arguments, line_number, line))
-
+            # Fail if the program won't fit into the 100 words of memory.  Note
+            # that we count code lines and not source lines.
             if len (code) > 100:
                 self.messages.add (True, 'Program too long', line_number, line)
                 raise Abort
-
         return code
 
     def parse (self, tokens, line_number, line):
@@ -187,22 +228,6 @@ class Assembler:
             arg = argument[0]
         return (op, arg)
 
-    def resolve_labels (self, code):
-        out = []
-        for (op, label) in code:
-            arg = 0
-            try:
-                # Try to find the value for the (possibly empty) argument
-                # label...
-                (arg, line_n, refs) = self.data [label]
-                self.data [label] = (arg, line_n, refs + 1)
-            except KeyError:
-                # ...if that fails try to treat the argument as a number.
-                arg = int (label)
-                # Add the numeric argument to the machine code.
-            out.append (op + arg)
-        return out
-
     def assemble (self, program):
         self.has_halt = False
         try:
@@ -212,16 +237,15 @@ class Assembler:
             # numeric argument.
             code = self.interpret_mnemonics (program)
 
-            # The second pass replaces labels with their addresses and generates the
-            # machine code.
-            self.code = self.resolve_labels (code)
+            # Fill in the address digits of the opcodes with the address that
+            # the labels stand for.
+            self.code = [ op + self.labels.get (label) for (op, label) in code ]
         except Abort:
             pass
         else:
-            for label in self.data:
-                (value, line, refs) = self.data[label]
-                if refs == 0:
-                    self.messages.add (False, 'Unused label', line, program [line - 1])
+            for entry in self.labels.unused ():
+                line = entry.line_number
+                self.messages.add (False, 'Unused label', line, program [line - 1])
 
             if not self.has_halt:
                 self.messages.add (False, 'No HLT instruction in input')
