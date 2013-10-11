@@ -27,6 +27,10 @@ class LMC_Client:
     def notify_step (self): return True
     def notify_halt (self): return True
 
+class Bad_Program (Exception):
+    def __init__ (self, file):
+        self.file = file
+
 class LMC:
     """Implementation of the Little Man Computer."""
     HLT = 0
@@ -49,6 +53,7 @@ class LMC:
         self.accumulator = 0
         self.overflow = False
         self.negative = False
+        self.waiting_for_input = False
 
     def register (self, client):
         """Register the client to be notified when something happens."""
@@ -58,8 +63,11 @@ class LMC:
         """Load a machine-language program from a file"""
         f = open (file)
         program = f.readlines ()
-        for i in range (len (program)):
-            self.memory [i] = int (program [i]) % 1000
+        try:
+            for i in range (len (program)):
+                self.memory [i] = int (program [i]) % 1000
+        except ValueError:
+            raise Bad_Program (file);
 
     def run (self):
         """Start the program from the beginning.
@@ -74,6 +82,9 @@ class LMC:
         if not self.client or self.client.notify_step ():
             self.resume ()
 
+    def is_waiting_for_input (self):
+        return self.waiting_for_input
+
     def resume (self):
         """Start or restart the program.
 
@@ -85,6 +96,7 @@ class LMC:
 
     def set_input (self, value):
         """Receive input from a client."""
+        self.waiting_for_input = False
         self.input = value % 1000
         self._set_accumulator (self.input)
 
@@ -144,6 +156,7 @@ class LMC:
                         self.set_input (response)
                     else:
                         go_on = response
+                        self.waiting_for_input = not go_on
                 else:
                     # If there's no client take what's in the input register.
                     self.set_input (self.input)

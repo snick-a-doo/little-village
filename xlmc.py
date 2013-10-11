@@ -20,41 +20,13 @@
 # Little Village.  If not, see <http://www.gnu.org/licenses/>.
 
 import os
+import string
 import sys
+
 from gi.repository import Gtk
 from gi.repository import Gdk
 
 import lmc
-
-class Number_Pad (Gtk.Grid):
-    def __init__ (self):
-        Gtk.Grid.__init__ (self)
-        self.buttons = []
-        for i in range (3):
-            for j in range (3):
-                button = Gtk.Button (label = '%d' % (3*(2-i) + j + 1))
-                self.attach (button, j, i, 1, 1)
-                self.buttons.append (button)
-        button = Gtk.Button (label = '0')
-        self.attach (button, 0, 3, 1, 1)
-        self.buttons.append (button)
-        button = Gtk.Button (label = 'Enter')
-        self.attach (button, 1, 3, 2, 1)
-        self.buttons.append (button)
-
-        for button in self.buttons:
-            button.connect ('clicked', self.on_click)
-
-    def set_sensitive (self, sensitive):
-        for button in self.buttons:
-            button.set_sensitive (sensitive)
-
-    def connect (self, event, callback):
-        if event == 'clicked':
-            self.callback = callback
-
-    def on_click (self, widget):
-        self.callback (self, widget.get_label ())
 
 class Register (Gtk.Entry):
     def __init__ (self, chars = 3):
@@ -95,10 +67,6 @@ class App (lmc.LMC_Client, Gtk.Window):
 
         control_box.pack_start (Gtk.Label (''), False, False, 0)
 
-        self.power = Gtk.Button (label='Power')
-        self.power.connect ('clicked', self.on_power)
-        control_box.pack_start (self.power, False, False, 0)
-
         self.program_name = Gtk.Label ('')
         control_box.pack_start (self.program_name, False, False, 0)
 
@@ -114,38 +82,30 @@ class App (lmc.LMC_Client, Gtk.Window):
         input_label = Gtk.Label ('Input')
         input_box.pack_start (input_label, False, False, 0)
 
-        # Keep the blank space before the digits like a calculator.
-        #self.input = Register ()
-        #self.input.set_sensitive (False)
-        #self.input.set_icon_from_stock (Gtk.EntryIconPosition.PRIMARY,
-        #                                Gtk.STOCK_NO)
-        #self.input.set_icon_from_stock (Gtk.EntryIconPosition.SECONDARY,
-        #                                Gtk.STOCK_CLEAR)
-        #self.input.connect ('activate', self.on_input)
-        #self.input.connect ('icon-press', self.on_clear)
+        self.input_stack = Gtk.TextView ()
+        self.input_stack.set_justification (Gtk.Justification.RIGHT)
+        self.input_stack.set_wrap_mode (Gtk.WrapMode.CHAR)
+        self.input_stack.set_editable (False)
 
-        #input_box.pack_start (self.input, False, False, 0)
+        self.input_entry = Register ()
+        self.input_entry.connect ('key-press-event', self.on_input_key)
 
-        self.input = Gtk.TextView ()
-        self.input.set_justification (Gtk.Justification.RIGHT)
-        self.input.set_wrap_mode (Gtk.WrapMode.CHAR)
-
-        input_box.pack_start (self.input, True, True, 6)
-
-        self.pad = Number_Pad ()
-        self.pad.set_sensitive (False)
-        self.pad.connect ('clicked', self.on_number)
-        #input_box.pack_start (self.pad, False, False, 0)
+        input_box.pack_start (self.input_stack, True, True, 6)
+        input_box.pack_start (self.input_entry, False, True, 6)
 
         output_box.pack_start (Gtk.Label ('Output'), False, False, 0)
 
-        self.output = Gtk.TextView ()
-        self.output.set_cursor_visible (False)
-        self.output.set_justification (Gtk.Justification.RIGHT)
-        self.output.set_wrap_mode (Gtk.WrapMode.CHAR)
-        self.output.set_editable (False)
+        self.output_tape = Gtk.TextView ()
+        self.output_tape.set_cursor_visible (False)
+        self.output_tape.set_justification (Gtk.Justification.RIGHT)
+        self.output_tape.set_wrap_mode (Gtk.WrapMode.CHAR)
+        self.output_tape.set_editable (False)
 
-        output_box.pack_start (self.output, True, True, 6)
+        self.clear_output = Gtk.Button (label='Clear')
+        self.clear_output.connect ('clicked', self.on_clear_output)
+
+        output_box.pack_start (self.output_tape, True, True, 6)
+        output_box.pack_start (self.clear_output, False, False, 6)
 
         register_box = Gtk.Box (orientation = Gtk.Orientation.VERTICAL, spacing = 6)
         register_box.pack_start (Gtk.Label (''), False, False, 0)
@@ -178,9 +138,6 @@ class App (lmc.LMC_Client, Gtk.Window):
         self.program_name.set_text (os.path.basename (filename))
         self.run.set_sensitive (True)
 
-    def on_power (self, widget):
-        Gtk.main_quit ()
-
     def on_load (self, widget):
         chooser = Gtk.FileChooserDialog ('Select A Program',
                                          buttons = (Gtk.STOCK_CANCEL, 
@@ -189,45 +146,70 @@ class App (lmc.LMC_Client, Gtk.Window):
                                                     Gtk.ResponseType.OK))
         response = chooser.run ()
         if response == Gtk.ResponseType.OK:
-            self.load_file (chooser.get_filename ())
+            try:
+                self.load_file (chooser.get_filename ())
+            except lmc.Bad_Program, (p):
+                error = Gtk.MessageDialog (self, 
+                                           Gtk.DialogFlags.DESTROY_WITH_PARENT,
+                                           Gtk.MessageType.ERROR,
+                                           Gtk.ButtonsType.OK,
+                                           'Could not load program %s' % p.file)
+                error.format_secondary_text ('Not an LMC machine code file.')
+                error.run ()
+                error.destroy ()
         chooser.destroy ()
 
     def on_run (self, widget):
         self.run.set_sensitive (False)
-        self.output.get_buffer ().set_text ('')
         self.computer.run ()
 
-    def on_input (self, widget):
-        self.input.set_icon_from_stock (Gtk.EntryIconPosition.PRIMARY,
-                                        Gtk.STOCK_NO)
-        self.input.set_sensitive (False)
-        self.pad.set_sensitive (False)
-        self.computer.set_input (int (self.input.get_text ()))
-        self.computer.resume ()
+    def on_input_key (self, widget, event):
+        if event.keyval == Gdk.KEY_Return:
+            entry = self.input_entry.get_text ()
+            self.input_entry.set_text ('')
+            n = 0
+            try:
+                n = int (entry)
+            except ValueError:
+                return
 
-    def on_clear (self, widget, position, event):
-        if position == Gtk.EntryIconPosition.SECONDARY:
-            self.input.set_text ('')
+            buffer = self.input_stack.get_buffer ()
+            buffer.insert (buffer.get_end_iter (), entry + '\n')
+            if self.computer.is_waiting_for_input ():
+                self.notify_input ()
+                self.computer.resume ()
 
-    def on_number (self, widget, label):
-        if label == 'Enter':
-            self.on_input (None)
+    def on_clear_output (self, widget):
+        buffer = self.output_tape.get_buffer ()
+        buffer.delete (buffer.get_start_iter (), buffer.get_end_iter ())
+
+    def notify_step (self):
+        self.program_counter.set_text ('%02d' % self.computer.counter)
+        self.input_register.set_text ('%03d' % self.computer.input)
+        self.output_register.set_text ('%03d' % self.computer.output)
+        return True # Don't block
+
+    def notify_input (self):
+        buffer = self.input_stack.get_buffer ()
+        text = string.split (buffer.get_text (buffer.get_start_iter (),
+                                              buffer.get_end_iter (), 
+                                              True),
+                             '\n')
+        print text
+        if len (text) > 0 and text [0] != '':
+            self.computer.set_input (int (text [0]))
+            print '##' + string.join (text [1:], '\n') + '##'
+            buffer.set_text (string.join (text [1:], '\n'))
+            return True
         else:
-            text = self.input.get_text ()
-            if len (text) < 3:
-                self.input.set_text (text + label)
+            return False
 
-    def input_callback (self):
-        self.input.set_sensitive (True)
-        self.pad.set_sensitive (True)
-        self.input.set_icon_from_stock (Gtk.EntryIconPosition.PRIMARY,
-                                        Gtk.STOCK_OK)
-
-    def output_callback (self, out):
-        buffer = self.output.get_buffer ()
+    def notify_output (self, out):
+        buffer = self.output_tape.get_buffer ()
         buffer.insert (buffer.get_start_iter (), '%3d\n' % out)
+        return True # Don't block.
 
-    def halt_callback (self):
+    def notify_halt (self):
         self.run.set_sensitive (True)
 
 
