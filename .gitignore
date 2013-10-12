@@ -1,2 +1,4 @@
 *.pyc
 .emacs.desktop
+*~
+doc/_build/*

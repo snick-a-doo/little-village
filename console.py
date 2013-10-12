@@ -1,6 +1,6 @@
 #!/usr/bin/python
 
-# xlmc.py - A graphical front end for the Little Man Computer emulator.
+# console.py - A graphical front end for the Little Man Computer emulator.
 #
 # Copyright 2013 Sam Varner
 #
