@@ -18,18 +18,47 @@
 # Little Village.  If not, see <http://www.gnu.org/licenses/>.
 
 class LMC_Client:
+    """A minimal client for an LMC object.
+
+    Derive clients from this class and override the methods as needed.  Call
+    __init__() in the derived class' __init__() to create the back end and
+    register for notification."""
     def __init__ (self):
         self.computer = LMC ()
         self.computer.register (self)
 
-    def notify_input (self): return True
-    def notify_output (self, output): return True
-    def notify_step (self): return True
-    def notify_halt (self): return True
+    def notify_input (self):
+        """Called when the computer is ready for input.
+
+        If an integer (including 0) is returned that number is entered into the
+        input register and execution continues.  Returning anything else that
+        evaluates to True continues without changing the input register.
+        Returning False pauses until LMC.resume() is called."""
+        return True
+
+    def notify_output (self, output):
+        """Called when the computer has produced output.
+
+        The value of the computer's output register is passed."""
+        pass
+
+    def notify_step (self):
+        """Called before executing each instruction.
+
+        Return True to continue execution, False to pause until LMC.resume() is
+        called."""
+        return True
+
+    def notify_halt (self):
+        """Called when the program finishes."""
+        pass
+
 
 class Bad_Program (Exception):
+    """Exception raised when an unsuitable file is loaded as a program."""
     def __init__ (self, file):
         self.file = file
+
 
 class LMC:
     """Implementation of the Little Man Computer."""
@@ -54,6 +83,7 @@ class LMC:
         self.overflow = False
         self.negative = False
         self.waiting_for_input = False
+        self.waiting_for_step = False
 
     def register (self, client):
         """Register the client to be notified when something happens."""
@@ -77,13 +107,7 @@ class LMC:
         on previous register values if it is to be re-run.
         """
         self.counter = 0
-        # Give the client a chance to break before the 1st instruction is
-        # executed. 
-        if not self.client or self.client.notify_step ():
-            self.resume ()
-
-    def is_waiting_for_input (self):
-        return self.waiting_for_input
+        self.resume ()
 
     def resume (self):
         """Start or restart the program.
@@ -91,8 +115,7 @@ class LMC:
         Any initialization must be done beforehand.  This can be used to by a
         client to resume after returning False to a notification method.
         """
-        while self.step () and (not self.client or self.client.notify_step ()):
-            pass
+        while self.step (): pass
 
     def set_input (self, value):
         """Receive input from a client."""
@@ -117,6 +140,8 @@ class LMC:
         returned the program can be restarted from where it left of with
         resume()
         """
+        if not self.can_do_step (): return False
+
         opcode = self.memory [self.counter]
         self.counter += 1
 
@@ -152,7 +177,7 @@ class LMC:
                     response = self.client.notify_input ();
                     # If an integer was returned use it as the input and
                     # continue executing.
-                    if type (response) == type (int ()):
+                    if not isinstance (response, bool) and isinstance (response,int):
                         self.set_input (response)
                     else:
                         go_on = response
@@ -164,12 +189,23 @@ class LMC:
             elif arg == 2:
                 self.output = self.accumulator
                 if self.client:
-                    go_on = self.client.notify_output (self.output)
-
+                    self.client.notify_output (self.output)
         return go_on
 
+    def can_do_step (self):
+        """Return False to pause execution."""
+        # Always step when resuming after a wait.
+        if self.waiting_for_step:
+            self.waiting_for_setp = False
+            return True
+        # Ask the client what to do.
+        if self.client: 
+            self.waiting_for_step = not self.client.notify_step ()
+            return not self.waiting_for_step
+        return True
 
     def __str__ (self):
+        """Return the string representation of the registers and memory."""
         str =  '\n'
         str += '      Input: %03d    Accumulator: %03d\n' % (self.input, self.accumulator)
         str += '     Output: %03d        Counter:  %02d\n' % (self.output, self.counter)

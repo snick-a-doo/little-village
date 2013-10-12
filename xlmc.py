@@ -29,14 +29,19 @@ from gi.repository import Gdk
 import lmc
 
 class Register (Gtk.Entry):
-    def __init__ (self, chars = 3):
+    def __init__ (self, chars = 3, width = None):
         Gtk.Entry.__init__ (self, xalign = 1.0)
+        self.chars = chars
         self.set_max_length (chars)
-        self.set_width_chars (chars)
+        self.set_width_chars (width or chars)
+
+    def set (self, value):
+        self.set_text ('%0*d' % (self.chars, value))
 
 class Memory (Gtk.Grid):
     def __init__ (self, width, height):
         Gtk.Grid.__init__ (self)
+        self.last_step = None
         self.cells = []
         for j in range (width):
             self.attach (Gtk.Label ('%d ' % j), j+1, 0, 1, 1)
@@ -50,6 +55,12 @@ class Memory (Gtk.Grid):
     def fill (self, data):
         for i in range (len (data)):
             self.cells [i].set_text ('%03d' % data [i])
+
+    def set_step (self, step):
+        if self.last_step != None:
+            self.cells [self.last_step].set_progress_fraction (0.0)
+        self.cells [step].set_progress_fraction (1.0)
+        self.last_step = step
 
 class App (lmc.LMC_Client, Gtk.Window):
     def __init__ (self):
@@ -87,7 +98,8 @@ class App (lmc.LMC_Client, Gtk.Window):
         self.input_stack.set_wrap_mode (Gtk.WrapMode.CHAR)
         self.input_stack.set_editable (False)
 
-        self.input_entry = Register ()
+        # Make room for the "ready" icon.
+        self.input_entry = Register (width = 6)
         self.input_entry.connect ('key-press-event', self.on_input_key)
 
         input_box.pack_start (self.input_stack, True, True, 6)
@@ -107,11 +119,15 @@ class App (lmc.LMC_Client, Gtk.Window):
         output_box.pack_start (self.output_tape, True, True, 6)
         output_box.pack_start (self.clear_output, False, False, 6)
 
-        register_box = Gtk.Box (orientation = Gtk.Orientation.VERTICAL, spacing = 6)
+        register_box = Gtk.Box (orientation = Gtk.Orientation.VERTICAL, spacing = 3)
         register_box.pack_start (Gtk.Label (''), False, False, 0)
         register_box.pack_start (Gtk.Label ('Counter'), False, False, 0)
         self.program_counter = Register (2)
         register_box.pack_start (self.program_counter, False, False, 0)
+        register_box.pack_start (Gtk.Label (''), False, False, 0)
+        register_box.pack_start (Gtk.Label ('Accumulator'), False, False, 0)
+        self.accumulator = Register ()
+        register_box.pack_start (self.accumulator, False, False, 0)
         register_box.pack_start (Gtk.Label (''), False, False, 0)
         register_box.pack_start (Gtk.Label ('Input'), False, False, 0)
         self.input_register = Register ()
@@ -126,7 +142,6 @@ class App (lmc.LMC_Client, Gtk.Window):
         self.memory.fill (self.computer.memory)
         display_box.pack_start (self.memory, False, False, 0)
 
-        #app_box.pack_start (space_box, False, False, 0)
         app_box.pack_start (control_box, False, False, 20)
         app_box.pack_start (input_box, False, False, 0)
         app_box.pack_start (output_box, False, False, 0)
@@ -175,8 +190,10 @@ class App (lmc.LMC_Client, Gtk.Window):
 
             buffer = self.input_stack.get_buffer ()
             buffer.insert (buffer.get_end_iter (), entry + '\n')
-            if self.computer.is_waiting_for_input ():
-                self.notify_input ()
+            if self.computer.waiting_for_input:
+                self.input_entry.set_icon_from_stock (Gtk.EntryIconPosition.PRIMARY,
+                                                      None)
+                self.computer.set_input (self.notify_input ())
                 self.computer.resume ()
 
     def on_clear_output (self, widget):
@@ -184,9 +201,12 @@ class App (lmc.LMC_Client, Gtk.Window):
         buffer.delete (buffer.get_start_iter (), buffer.get_end_iter ())
 
     def notify_step (self):
-        self.program_counter.set_text ('%02d' % self.computer.counter)
-        self.input_register.set_text ('%03d' % self.computer.input)
-        self.output_register.set_text ('%03d' % self.computer.output)
+        self.program_counter.set (self.computer.counter)
+        self.accumulator.set (self.computer.counter)
+        self.input_register.set (self.computer.input)
+        self.output_register.set (self.computer.output)
+        self.memory.fill (self.computer.memory)
+        self.memory.set_step (self.computer.counter)
         return True # Don't block
 
     def notify_input (self):
@@ -195,19 +215,20 @@ class App (lmc.LMC_Client, Gtk.Window):
                                               buffer.get_end_iter (), 
                                               True),
                              '\n')
-        print text
         if len (text) > 0 and text [0] != '':
-            self.computer.set_input (int (text [0]))
-            print '##' + string.join (text [1:], '\n') + '##'
             buffer.set_text (string.join (text [1:], '\n'))
-            return True
+            return int (text [0])
         else:
+            # Put an icon in the text field to indicate that we're ready for
+            # input.
+            self.input_entry.set_icon_from_stock (Gtk.EntryIconPosition.PRIMARY,
+                                                  Gtk.STOCK_YES)
+            self.input_entry.grab_focus ()
             return False
 
     def notify_output (self, out):
         buffer = self.output_tape.get_buffer ()
         buffer.insert (buffer.get_start_iter (), '%3d\n' % out)
-        return True # Don't block.
 
     def notify_halt (self):
         self.run.set_sensitive (True)
