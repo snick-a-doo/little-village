@@ -29,14 +29,24 @@ from gi.repository import Gdk
 import lmc
 
 class Register (Gtk.Entry):
-    def __init__ (self, chars = 3, width = None):
+    """A numeric entry field for LMC registers.
+
+\param chars The maximum number of characters for the field
+\param icon If true display an icon that's shown or hidden with set_ready()"""
+    def __init__ (self, chars = 3, icon = False):
         Gtk.Entry.__init__ (self, xalign = 1.0)
         self.chars = chars
         self.set_max_length (chars)
-        self.set_width_chars (width or chars)
+        self.has_icon = icon
+        self.set_width_chars (chars + (3 if self.has_icon else 0))
 
     def set (self, value):
         self.set_text ('%0*d' % (self.chars, value))
+
+    def set_ready (self, ready):
+        if self.has_icon:
+            self.set_icon_from_stock (Gtk.EntryIconPosition.PRIMARY,
+                                      Gtk.STOCK_YES if ready else None)
 
 class Memory (Gtk.Grid):
     def __init__ (self, width, height):
@@ -99,7 +109,7 @@ class App (lmc.LMC_Client, Gtk.Window):
         self.input_stack.set_editable (False)
 
         # Make room for the "ready" icon.
-        self.input_entry = Register (width = 6)
+        self.input_entry = Register (icon = True)
         self.input_entry.connect ('key-press-event', self.on_input_key)
 
         input_box.pack_start (self.input_stack, True, True, 6)
@@ -191,8 +201,7 @@ class App (lmc.LMC_Client, Gtk.Window):
             buffer = self.input_stack.get_buffer ()
             buffer.insert (buffer.get_end_iter (), entry + '\n')
             if self.computer.waiting_for_input:
-                self.input_entry.set_icon_from_stock (Gtk.EntryIconPosition.PRIMARY,
-                                                      None)
+                self.input_entry.set_ready (False)
                 self.computer.set_input (self.notify_input ())
                 self.computer.resume ()
 
@@ -221,8 +230,7 @@ class App (lmc.LMC_Client, Gtk.Window):
         else:
             # Put an icon in the text field to indicate that we're ready for
             # input.
-            self.input_entry.set_icon_from_stock (Gtk.EntryIconPosition.PRIMARY,
-                                                  Gtk.STOCK_YES)
+            self.input_entry.set_ready (True)
             self.input_entry.grab_focus ()
             return False
 
