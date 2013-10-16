@@ -241,11 +241,23 @@ class App (lmc.LMC_Client, Gtk.Window):
     def notify_halt (self):
         self.run.set_sensitive (True)
 
+def print_help (app):
+    print 'GUI for the Little Man Computer'
+    print
+    print 'Usage: %s [<program-name>]' % app
+    print
+    print 'where <program-name> is the name of a machine-code program file.'
+    print
 
-app = App ()
-if len (sys.argv) > 1:
-    app.load_file (sys.argv [1])
+def run (program, args):
+    if len (args) > 1:
+        print_help (program)
+    else:
+        app = App ()
+        if len (args) == 1: app.load_file (args [0])
+        app.connect ('delete-event', Gtk.main_quit)
+        app.show_all ()
+        Gtk.main ()
 
-app.connect ('delete-event', Gtk.main_quit)
-app.show_all ()
-Gtk.main ()
+if __name__ == '__main__':
+    run (sys.argv [0], sys.argv [1:])

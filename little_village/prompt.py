@@ -1,6 +1,6 @@
 #!/usr/bin/python
 
-# repl.py - A command-line interface for the Little Man Computer emulator.
+# prompt.py - A command-line interface for the Little Man Computer emulator.
 #
 # Copyright 2013 Sam Varner
 #
@@ -22,7 +22,7 @@
 import lmc
 import string
 
-class REPL_Client (lmc.LMC_Client):
+class Prompt_Client (lmc.LMC_Client):
     prompt = 'LMC> '
 
     def notify_input (self):
@@ -34,7 +34,7 @@ class REPL_Client (lmc.LMC_Client):
 
     def run (self):
         try:
-            while self.parse (raw_input (REPL_Client.prompt)):
+            while self.parse (raw_input (Prompt_Client.prompt)):
                 pass
         except EOFError:
             # Quit on Ctrl+D
@@ -42,7 +42,7 @@ class REPL_Client (lmc.LMC_Client):
         print 'bye'
 
     def read (self):
-        response = raw_input (REPL_Client.prompt);
+        response = raw_input (Prompt_Client.prompt);
 
     def parse (self, input):
         tokens = string.split (input)
@@ -66,6 +66,17 @@ class REPL_Client (lmc.LMC_Client):
 
         return True
 
+def print_help (app):
+    print 'Command prompt for the Little Man Computer'
+    print
+    print 'Usage: %s' % app
+    print
+
+def run (program, args):
+    if len (args) > 0:
+        print_help (program)
+    else:
+        Prompt_Client ().run ()
+
 if __name__ == '__main__':
-    client = REPL_Client ()
-    client.run ()
+    run (sys.argv [0], sys.argv [1:])

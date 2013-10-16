@@ -1,4 +1,7 @@
 *.pyc
 .emacs.desktop
 *~
+build/
+dist/
 doc/_build/*
+MANIFEST

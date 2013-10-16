@@ -41,14 +41,25 @@ class Batch_Client (lmc.LMC_Client):
         self.outputs.append (out)
         return True
 
-if __name__ == '__main__':
-    if len (sys.argv) < 2:
-        print 'Usage: batch program-name [input...]'
+def print_help (app):
+    print 'Execute a Little Man Computer program'
+    print
+    print 'Usage: %s <program-name> [<input>...]' % app
+    print
+    print 'where <program-name> is the name of a machine-code program file'
+    print 'and <input>s are any integer inputs needed by the program.'
+    print
+
+def run (args):
+    if len (args) < 1:
+        print_help (args [0])
     else:
-        program = sys.argv [1]
-        inputs = sys.argv [2:]
+        program = args [0]
+        inputs = args [1:]
         client = Batch_Client (program, inputs)
         client.run ()
         for n in client.outputs:
             print n
 
+if __name__ == '__main__':
+    run (sys.argv [1:])

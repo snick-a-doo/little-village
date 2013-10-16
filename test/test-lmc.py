@@ -2,8 +2,8 @@
 
 import os
 import sys
-# Allow importing modules from the parent directory
-sys.path.append (os.path.abspath ('..'))
+# Allow importing modules from the source directory
+sys.path.append (os.path.abspath ('../little_village'))
 
 import lmc
 import batch

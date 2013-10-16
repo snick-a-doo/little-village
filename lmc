@@ -1,0 +1,4 @@
+#!/usr/bin/python
+
+from little_village.command import run
+run ()

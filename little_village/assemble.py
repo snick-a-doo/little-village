@@ -256,25 +256,44 @@ class Assembler:
         for line in self.code:
             stream.write ('%03d\n' % line)
 
-if __name__ == '__main__':
+def print_help (app):
+    print 'Convert a Little Man Computer assembly program to machine code'
+    print
+    print 'Usage: %s <input-file> [<output-file>]' % app
+    print
+    print 'where <input-file> is an LMC assembly language file and the machine'
+    print 'code is written to <output-file>.  If <output-file> is not given then'
+    print 'the output file name is constructed by removing the extension from'
+    print '<input-file>.  An error is signaled and nothing is written if'
+    print '<output-file> is the same as <input-file>.'
+    print
+
+def run (args):
     n_args = len (sys.argv)
     if n_args < 2 or n_args > 3:
-        print 'Usage: assemble.py program [output_file]'
+        print_help (args [0])
         sys.exit (1)
 
-    # Read the whole program into an array.
-    input_file = sys.argv [1]
-    program = open (input_file, 'r').readlines ()
-
+    output_file = None
+    if len (args) > 1:
+        output_file = args [1]
+    else:
+        output_file = os.path.splitext (input_file)[0]
     output_stream = sys.stdout
-    output_file = os.path.splitext (input_file)[0]
-    if n_args > 2:
-        output_file = sys.argv [2]
+    if output_file == input_file:
+        'Error: output file %s has the same name as the input file.'
+        sys.exit (1)
     if output_file != '' and output_file != '-':
         output_stream = open (output_file, 'w')
 
+    # Read the whole program into an array.
+    program = open (input_file, 'r').readlines ()
     asm = Assembler ()
     if asm.assemble (program):
         asm.write_program (output_stream)
     else:
         asm.messages.write ()
+
+if __name__ == '__main__':
+    run (sys.argv)
+
