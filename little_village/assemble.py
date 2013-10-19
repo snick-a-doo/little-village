@@ -25,7 +25,7 @@ import sys
 
 # Errors:
 #  * Unknown mnemonic
-#   Wrong number of arguments for opcode
+#   Wrong number of arguments for instruction
 #   Argument out of range
 #   Undefined label
 #  * Too long
@@ -37,7 +37,7 @@ import sys
 #  * Unused label
 #  * No HLT
 #   Data may be executed as code
-#   Jump to data
+#   Branch to data
 #   Unlabeled data
 
 def count (n, word):
@@ -201,7 +201,7 @@ class Assembler:
 
         if len (arguments) > 0 and self.opcodes.has_key (arguments[0]):
             self.messages.add (True, 
-                               'Label must not be the same as a mnemonic',
+                               'Label matches a mnemonic',
                                line_number,
                                line)
             mnemonic = ''

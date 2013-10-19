@@ -3,7 +3,7 @@
 import os
 import sys
 # Allow importing modules from the source directory
-sys.path.append (os.path.abspath ('../little_village'))
+sys.path = [os.path.abspath ('../little_village')] + sys.path
 
 import lmc
 import batch

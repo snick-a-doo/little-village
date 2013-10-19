@@ -3,7 +3,7 @@
 import os
 import sys
 # Allow importing modules from the source directory
-sys.path.append (os.path.abspath ('../little_village'))
+sys.path = [os.path.abspath ('../little_village')] + sys.path
 
 import assemble
 import unittest
@@ -73,7 +73,7 @@ class Test_Assemble (unittest.TestCase):
         # The line number is source file lines.  Comments and blanks are
         # included in the count.
         self.assertEqual (self.messages (),
-                          'Error: Label must not be the same as a mnemonic\n'
+                          'Error: Label matches a mnemonic\n'
                           '  line 4  : STA SUB\n'
                           '\n'
                           '1 error, 0 warnings\n')

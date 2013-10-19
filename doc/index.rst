@@ -3,20 +3,26 @@
    You can adapt this file completely to your liking, but it should at least
    contain the root `toctree` directive.
 
-Welcome to little-village's documentation!
-==========================================
+Welcome to Little Village
+=========================
+
+Little Village is a collection of programs for working with the Little Man
+Computer or LMC.  The LMC is an computer architecture invented to be
+understandable to humans.  It uses three-digit words, has a small instruction
+set, few registers, and 100 words of memory.  In principle, it can do anything
+any other computer can.  In practice, you wouldn't want to do anything much more
+demanding than calculating the fines on you overdue library books.  To learn
+more see the `Wikipedia entry for Little Man Computer
+<https://en.wikipedia.org/wiki/Little_man_computer>`_.
 
 Contents:
 
 .. toctree::
    :maxdepth: 2
 
-   overview
-   assemble
-   batch
-   repl
-   console
-   back-end
+   users-guide
+   programmers-guide
+   lmc-reference
 
 Indices and tables
 ==================
