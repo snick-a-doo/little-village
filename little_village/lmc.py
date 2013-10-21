@@ -17,51 +17,81 @@
 # You should have received a copy of the GNU General Public License along with
 # Little Village.  If not, see <http://www.gnu.org/licenses/>.
 
+import math
+
 class LMC_Client:
-    """A minimal client for an LMC object.
+    '''A minimal client for an LMC object.
 
     Derive clients from this class and override the methods as needed.  Call
     __init__() in the derived class' __init__() to create the back end and
-    register for notification."""
-    def __init__ (self):
-        self.computer = LMC ()
-        self.computer.register (self)
+    register for notification.
+
+    The methods below are called by the LMC object that was registered with.
+    '''
+    def __init__ (self, base = 10, memory = 100):
+        self.computer = LMC (base, memory)
+        self.computer.connect (self)
 
     def notify_input (self):
-        """Called when the computer is ready for input.
+        '''Called when the computer is ready for input.
 
         If an integer (including 0) is returned that number is entered into the
         input register and execution continues.  Returning anything else that
         evaluates to True continues without changing the input register.
-        Returning False pauses until LMC.resume() is called."""
+        Returning False pauses until LMC.resume() is called.
+        '''
         return True
 
     def notify_output (self, output):
-        """Called when the computer has produced output.
+        '''Called when the computer has produced output.
 
-        The value of the computer's output register is passed."""
+        The value of the computer's output register is passed.
+        '''
         pass
 
     def notify_step (self):
-        """Called before executing each instruction.
+        '''Called before executing each instruction.
 
         Return True to continue execution, False to pause until LMC.resume() is
-        called."""
+        called.
+        '''
         return True
 
     def notify_halt (self):
-        """Called when the program finishes."""
+        '''Called when the program finishes.'''
         pass
 
 
 class Bad_Program (Exception):
-    """Exception raised when an unsuitable file is loaded as a program."""
+    '''Exception raised when a non-integer is found in a program.'''
     def __init__ (self, file):
         self.file = file
 
+class Instruction_Out_Of_Range (Exception):
+    '''Exception raised when an instruction does not fit in a word.'''
+    def __init__ (self, address, instruction):
+        self.address = address
+        self.instruction = instruction
+
+class Input_Out_Of_Range (Exception):
+    '''Exception raised when a client gives input that does not fit in a word.'''
+    def __init__ (self, input):
+        self.input = input
+
+class Bad_Input_Type (Exception):
+    '''Exception raised when a client gives input that is not Boolean or integer.'''
+    def __init__ (self, input):
+        self.input (input)
+        self.type (typeof (input))
+
+def digits (n, base):
+    '''Return the number of digits needed to provide n different values.'''
+    return int (math.ceil (math.log (n, base)))
 
 class LMC:
-    """Implementation of the Little Man Computer."""
+    '''Implementation of the Little Man Computer.'''
+
+    # TODO: Use same mnemonic info as assemble?
     HLT = 0
     ADD = 1
     SUB = 2
@@ -72,10 +102,30 @@ class LMC:
     BRP = 8
     IO = 9
 
-    def __init__ (self):
-        """Initialize memory and registers."""
+    def __init__ (self, base = 10, memory = 100):
+        '''Initialize memory and registers.
+
+        Base is the numeric base for data in registers; 2 for binary, 10 for
+        decimal, etc.  Memory is the number of memory cells.  Together, these
+        arguments determine the word size.
+        '''
+        self.base = base
+        self.memory_size = memory
+
+        # A word needs some number of digits to specify the 10 instruction codes
+        # and an additional number address all of the memory.
+        self.address_digits = digits (self.memory_size, self.base)
+        self.word_digits = digits (10, self.base) + self.address_digits
+        # The number of different values a word can have.
+        self.word_range = self.base**self.word_digits
+        # The maximum value a word can have.
+        self.word_max = self.word_range - 1
+
         self.client = None
-        self.memory = 100*[0]
+
+        # Make a memory cell for each possible argument.  Initialize to 0.
+        self.memory = memory*[0]
+        # Initialize all registers to zero.
         self.input = 0
         self.output = 0
         self.counter = 0
@@ -85,68 +135,77 @@ class LMC:
         self.waiting_for_input = False
         self.waiting_for_step = False
 
-    def register (self, client):
-        """Register the client to be notified when something happens."""
+    def connect (self, client):
+        '''Specify the client to be notified when something happens.
+
+        A client calls this method passing itself as the argument.  Only one
+        client may be connected at a time.
+        '''
         self.client = client
 
     def load (self, file):
-        """Load a machine-language program from a file"""
+        '''Load a machine-language program from a file'''
         f = open (file)
         program = f.readlines ()
         try:
             for i in range (len (program)):
-                self.memory [i] = int (program [i]) % 1000
+                code = int (program [i])
+                if not self._is_in_word_range (code):
+                    raise Instruction_Out_Of_Range (i, code)
+                self.memory [i] = code
         except ValueError:
             raise Bad_Program (file);
 
     def run (self):
-        """Start the program from the beginning.
+        '''Start the program from the beginning.
 
         We only reset the counter, the other registers retain their values.  It
         is the programmer's responsibility to make sure the code does not depend
         on previous register values if it is to be re-run.
-        """
+        '''
         self.counter = 0
         self.resume ()
 
     def resume (self):
-        """Start or restart the program.
+        '''Start or restart the program.
 
         Any initialization must be done beforehand.  This can be used to by a
         client to resume after returning False to a notification method.
-        """
+        '''
         while self.step (): pass
 
     def set_input (self, value):
-        """Receive input from a client."""
+        '''Called by a client to fill the input register.'''
         self.waiting_for_input = False
-        self.input = value % 1000
+        if not self._is_in_word_range (value):
+            raise Input_Out_Of_Range (response)
+        self.input = value;
         self._set_accumulator (self.input)
 
     def _set_accumulator (self, value):
-        """Load a value into the accumulator.
+        '''Load a value into the accumulator.
 
         Since this value may come from addition or subtraction we must roll over
         and set the appropriate flag if it's out of range.
-        """
-        self.overflow = value > 999
+        '''
+        self.overflow = value > self.word_max
         self.negative = value < 0
-        self.accumulator = value % 1000
+        self.accumulator = value % self.word_range
 
     def step (self):
-        """Decode and execute a single instruction.
+        '''Decode and execute the instruction pointed to by the program counter.
 
         Return True if the program can continue, False otherwise.  If False is
         returned the program can be restarted from where it left of with
         resume()
-        """
-        if not self.can_do_step (): return False
+        '''
+        if not self._can_do_step (): return False
 
         opcode = self.memory [self.counter]
         self.counter += 1
 
-        op = opcode / 100
-        arg = opcode - 100 * op
+        op = opcode / self.memory_size
+        arg = opcode - self.memory_size * op
 
         go_on = True;
 
@@ -176,12 +235,15 @@ class LMC:
                 if self.client:
                     response = self.client.notify_input ();
                     # If an integer was returned use it as the input and
-                    # continue executing.
-                    if not isinstance (response, bool) and isinstance (response,int):
-                        self.set_input (response)
-                    else:
+                    # continue executing.  Note that a bool is also an int so
+                    # we check for bool first.
+                    if isinstance (response, bool):
                         go_on = response
                         self.waiting_for_input = not go_on
+                    elif isinstance (response, int):
+                        self.set_input (response)
+                    else:
+                        raise Bad_Input_Type (response)
                 else:
                     # If there's no client take what's in the input register.
                     self.set_input (self.input)
@@ -192,8 +254,8 @@ class LMC:
                     self.client.notify_output (self.output)
         return go_on
 
-    def can_do_step (self):
-        """Return False to pause execution."""
+    def _can_do_step (self):
+        '''Return False to pause execution.'''
         # Always step when resuming after a wait.
         if self.waiting_for_step:
             self.waiting_for_setp = False
@@ -204,15 +266,26 @@ class LMC:
             return not self.waiting_for_step
         return True
 
+    def _is_in_word_range (n):
+        '''Internal: Return true if n fits in a word.'''
+        return n >= 0 and n < self.word_range
+
+    def _format (self, n, address = False):
+        '''Internal: Format the contents of a register for pretty printing.'''
+        spec = '%%0*%c' % ('d' if self.base == 10 else 'x')
+        digits = self.address_digits if address else self.word_digits
+        return spec % (digits, n)
+
     def __str__ (self):
-        """Return the string representation of the registers and memory."""
+        '''Return the string representation of the registers and memory.'''
         str =  '\n'
-        str += '      Input: %03d    Accumulator: %03d\n' % (self.input, self.accumulator)
-        str += '     Output: %03d        Counter:  %02d\n' % (self.output, self.counter)
-        str += '\n'
-        width = 10
-        for i in range (0, len (self.memory), width):
-            for j in range (width):
-                str += ' %03d' % self.memory [i+j]
-            str += '\n'
+        str += ('      Input: %s    Accumulator: %s\n' 
+                % (self._format (self.input), self._format (self.accumulator)))
+        str += ('     Output: %s        Counter:  %s\n'
+                % (self._format (self.output), self._format (self.counter, True)))
+
+        width = 10 if self.base == 10 else 16
+        for i in range (0, self.memory_size):
+            if i % width == 0: str += '\n'
+            str += ' %s' % self._format (self.memory [i])
         return str
