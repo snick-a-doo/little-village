@@ -16,7 +16,7 @@ import sys, os
 # If extensions (or modules to document with autodoc) are in another directory,
 # add these directories to sys.path here. If the directory is relative to the
 # documentation root, use os.path.abspath to make it absolute, like shown here.
-#sys.path.insert(0, os.path.abspath('.'))
+sys.path.insert (0, os.path.abspath('../little_village'))
 
 # -- General configuration -----------------------------------------------------
 
@@ -40,7 +40,7 @@ source_suffix = '.rst'
 master_doc = 'index'
 
 # General information about the project.
-project = u'little-village'
+project = u'Little Village'
 copyright = u'2013, Sam Varner'
 
 # The version info for the project you're documenting, acts as replacement for

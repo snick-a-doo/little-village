@@ -2,4 +2,35 @@
  Programmer's Guide
 ====================
 
-TODO: Describe LMC and LMC_Client classes.
+Currently this is just the (incomplete) automatically generated source
+documentation.
+
+LMC
+===
+
+.. automodule:: lmc
+   :members:
+
+Assemble
+========
+
+.. automodule:: assemble
+   :members:
+
+Batch
+=====
+
+.. automodule:: batch
+   :members:
+
+Prompt
+======
+
+.. automodule:: prompt
+   :members:
+
+Console
+=======
+
+.. automodule:: console
+   :members:

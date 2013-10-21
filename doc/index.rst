@@ -3,8 +3,9 @@
    You can adapt this file completely to your liking, but it should at least
    contain the root `toctree` directive.
 
-Welcome to Little Village
-=========================
+===========================
+ Welcome to Little Village
+===========================
 
 Little Village is a collection of programs for working with the Little Man
 Computer or LMC.  The LMC is an computer architecture invented to be
@@ -20,6 +21,7 @@ Contents:
 .. toctree::
    :maxdepth: 2
 
+   installation
    users-guide
    programmers-guide
    lmc-reference
