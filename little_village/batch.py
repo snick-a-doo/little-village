@@ -22,6 +22,8 @@
 import lmc
 import sys
 
+class Not_Enough_Arguments (Exception): pass
+
 class Batch_Client (lmc.LMC_Client):
     def __init__ (self, program, inputs):
         lmc.LMC_Client.__init__ (self)
@@ -33,6 +35,8 @@ class Batch_Client (lmc.LMC_Client):
         self.computer.run ()
 
     def notify_input (self):
+        if len (self.inputs) == 0:
+            raise Not_Enough_Arguments
         n = self.inputs [0]
         self.inputs = self.inputs [1:]
         return int (n)
@@ -50,16 +54,24 @@ def print_help (app):
     print 'and <input>s are any integer inputs needed by the program.'
     print
 
-def run (args):
+def run (program, args):
     if len (args) < 1:
-        print_help (args [0])
+        print_help (program)
     else:
-        program = args [0]
-        inputs = args [1:]
-        client = Batch_Client (program, inputs)
-        client.run ()
-        for n in client.outputs:
-            print n
+        client = Batch_Client (args [0], args [1:])
+        try:
+            client.run ()
+            # Show any extra arguments.
+            if len (client.inputs) > 0:
+                sys.stderr.write ('Warning: Unused arguments: ')
+                for a in client.inputs:
+                    sys.stderr.write (a + ' ')
+                sys.stderr.write ('\n')
+            # Print the output.
+            for n in client.outputs:
+                print n
+        except Not_Enough_Arguments:
+            sys.stderr.write ('Error: Not enough arguments supplied for %s\n' % args [0])
 
 if __name__ == '__main__':
     run (sys.argv [1:])
