@@ -22,9 +22,26 @@
 import lmc
 import sys
 
-class Not_Enough_Arguments (Exception): pass
+class Not_Enough_Inputs (Exception):
+    '''Exception raised when program requires more inputs than were provided.'''
+    def __str__ (self):
+        return 'Not enough inputs.'
+
+class Unused_Inputs (Exception):
+    '''Exception raised when some of the provided inputs were not used by the program.'''
+    def __init__ (self, inputs):
+        self.inputs = inputs
+    def __str__ (self):
+        str = 'Unused inputs: '
+        for a in self.inputs:
+            str += (a + ' ')
+        return str
 
 class Batch_Client (lmc.LMC_Client):
+    '''A non-interactive LMC client.
+
+    All input is supplied when the object is created.  All program output is
+    stored in the member list "outputs".'''
     def __init__ (self, program, inputs):
         lmc.LMC_Client.__init__ (self)
         self.inputs = inputs
@@ -32,16 +49,25 @@ class Batch_Client (lmc.LMC_Client):
         self.computer.load (program)
 
     def run (self):
+        '''Start execution of the program.'''
         self.computer.run ()
 
     def notify_input (self):
+        '''Provide input when needed by the program during execution.
+
+        The input value is removed from the input list.  If the input list is
+        empty (before removal) Not_Enough_Inputs is raised.''' 
         if len (self.inputs) == 0:
-            raise Not_Enough_Arguments
-        n = self.inputs [0]
+            raise Not_Enough_Inputs
+        arg = self.inputs [0]
         self.inputs = self.inputs [1:]
-        return int (n)
+        return arg
 
     def notify_output (self, out):
+        '''Receive output from the program during execution.
+
+        The outputs are saved to an array where they can be used as needed.
+        This object does not handle display of the output.'''
         self.outputs.append (out)
         return True
 
@@ -54,24 +80,30 @@ def print_help (app):
     print 'and <input>s are any integer inputs needed by the program.'
     print
 
+def print_message (prefix, exception):
+    sys.stderr.write (prefix + ': ' + exception.__str__ () + '\n')
+
 def run (program, args):
     if len (args) < 1:
         print_help (program)
     else:
-        client = Batch_Client (args [0], args [1:])
         try:
+            client = Batch_Client (args [0], args [1:])
             client.run ()
-            # Show any extra arguments.
-            if len (client.inputs) > 0:
-                sys.stderr.write ('Warning: Unused arguments: ')
-                for a in client.inputs:
-                    sys.stderr.write (a + ' ')
-                sys.stderr.write ('\n')
             # Print the output.
             for n in client.outputs:
                 print n
-        except Not_Enough_Arguments:
-            sys.stderr.write ('Error: Not enough arguments supplied for %s\n' % args [0])
+            # Check for extra input.
+            if len (client.inputs) > 0:
+                raise Unused_Inputs (client.inputs)
+        except (lmc.Program_File_Not_Found,
+                lmc.Bad_Input_Type, 
+                Not_Enough_Inputs), error:
+            print_message ('Error', error)
+        except (Unused_Inputs), warning:
+            print_message ('Warning', warning)
+        except Exception, error:
+            print_message ('Internal', error)
 
 if __name__ == '__main__':
     run (sys.argv [1:])

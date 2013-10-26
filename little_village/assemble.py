@@ -40,7 +40,7 @@ import sys
 #   Branch to data
 #   Unlabeled data
 
-def count (n, word):
+def _count (n, word):
     '''A helper to format a count of things.
 We assume the word is made plural by adding "s".'''
     if n != 1: word += 's'
@@ -88,8 +88,8 @@ class Message_Queue:
 
         if self.n_errors > 0 or self.n_warnings > 0:
             stream.write ('\n%s, %s\n' 
-                          % (count (self.n_errors, 'error'),
-                             count (self.n_warnings, 'warning')))
+                          % (_count (self.n_errors, 'error'),
+                             _count (self.n_warnings, 'warning')))
 
 '''
 A program label and associated information.
@@ -221,7 +221,7 @@ class Assembler:
         if n_args != n_required:
             self.messages.add (True, 
                                ('%s requires %s, %d given'
-                                % (mnemonic, count (n_required, 'argument'), n_args)),
+                                % (mnemonic, _count (n_required, 'argument'), n_args)),
                                line_number,
                                line)
         elif len (argument) > 0:

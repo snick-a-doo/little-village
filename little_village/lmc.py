@@ -18,6 +18,7 @@
 # Little Village.  If not, see <http://www.gnu.org/licenses/>.
 
 import math
+import string
 
 class LMC_Client:
     '''A minimal client for an LMC object.
@@ -61,28 +62,53 @@ class LMC_Client:
         '''Called when the program finishes.'''
         pass
 
-
-class Bad_Program (Exception):
-    '''Exception raised when a non-integer is found in a program.'''
+class Program_File_Not_Found (Exception):
+    '''Exception raised when a program file that does not exist is specified.'''
     def __init__ (self, file):
         self.file = file
+    def __str__ (self):
+        return ('Program file not found: %s' % self.file)
+
+class Bad_Instruction_Type (Exception):
+    '''Exception raised when a non-integer is found in a program.'''
+    def __init__ (self, instruction, address):
+        self.instruction = instruction
+        self.address = address
+    def __str__ (self):
+        return ('Unexpected input type for instruction: %s %s at address %d.\n'
+                'Should be something that can be converted to an integer.'
+                % (self.instruction, type (self.instruction), self.address))
 
 class Instruction_Out_Of_Range (Exception):
     '''Exception raised when an instruction does not fit in a word.'''
-    def __init__ (self, address, instruction):
-        self.address = address
+    def __init__ (self, instruction, address, max_instruction):
         self.instruction = instruction
+        self.address = address
+        self.max_instruction = max_instruction
+    def __str__ (self):
+        return ('Instruction out of range: %d at address %d.\n'
+                'Instructions must be from 0 to %d'
+                % (self.instruction, self.address, self.max_input))
 
 class Input_Out_Of_Range (Exception):
     '''Exception raised when a client gives input that does not fit in a word.'''
-    def __init__ (self, input):
+    def __init__ (self, input, max_input):
         self.input = input
+        self.max_input = max_input
+    def __str__ (self):
+        return ('Input out of range: %d.\n'
+                'Input must be from 0 to %d'
+                % (self.input, self.max_input))
 
 class Bad_Input_Type (Exception):
     '''Exception raised when a client gives input that is not Boolean or integer.'''
     def __init__ (self, input):
-        self.input (input)
-        self.type (typeof (input))
+        self.input = input
+    def __str__ (self):
+        return ('Unexpected input type for input: %s %s.\n'
+                'Should be bool, or something that can be '
+                'converted to an integer.'
+                % (self.input, type (self.input)))
 
 def digits (n, base):
     '''Return the number of digits needed to provide n different values.'''
@@ -145,16 +171,20 @@ class LMC:
 
     def load (self, file):
         '''Load a machine-language program from a file'''
-        f = open (file)
-        program = f.readlines ()
         try:
-            for i in range (len (program)):
+            f = open (file)
+        except IOError:
+            raise Program_File_Not_Found (file)
+
+        program = f.readlines ()
+        for i in range (len (program)):
+            try:
                 code = int (program [i])
                 if not self._is_in_word_range (code):
-                    raise Instruction_Out_Of_Range (i, code)
+                    raise Instruction_Out_Of_Range (code, i, self.word_max)
                 self.memory [i] = code
-        except ValueError:
-            raise Bad_Program (file);
+            except ValueError:
+                raise Bad_Instruction_Type (code, i);
 
     def run (self):
         '''Start the program from the beginning.
@@ -178,7 +208,7 @@ class LMC:
         '''Called by a client to fill the input register.'''
         self.waiting_for_input = False
         if not self._is_in_word_range (value):
-            raise Input_Out_Of_Range (response)
+            raise Input_Out_Of_Range (response, self.word_max)
         self.input = value;
         self._set_accumulator (self.input)
 
@@ -240,10 +270,11 @@ class LMC:
                     if isinstance (response, bool):
                         go_on = response
                         self.waiting_for_input = not go_on
-                    elif isinstance (response, int):
-                        self.set_input (response)
                     else:
-                        raise Bad_Input_Type (response)
+                        try:
+                            self.set_input (int (response))
+                        except ValueError:
+                            raise Bad_Input_Type (response)
                 else:
                     # If there's no client take what's in the input register.
                     self.set_input (self.input)
@@ -266,7 +297,7 @@ class LMC:
             return not self.waiting_for_step
         return True
 
-    def _is_in_word_range (n):
+    def _is_in_word_range (self, n):
         '''Internal: Return true if n fits in a word.'''
         return n >= 0 and n < self.word_range
 
