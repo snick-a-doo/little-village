@@ -2,7 +2,7 @@
  Programmer's Guide
 ====================
 
-Currently this is just the (incomplete) automatically generated source
+Currently this is just the automatically generated source
 documentation.
 
 LMC

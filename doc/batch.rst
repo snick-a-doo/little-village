@@ -19,23 +19,24 @@ Errors and Warnings
 
 Any errors or warnings are written to standard error.  If an error is signaled
 output is incomplete or not produced at all.  Error messages are preceded by
-'Error:', warnings are preceded by 'Warning:'.  Any other problems that occur
-during execution are reported as 'Internal:'.  Internal errors are unexpected
-and may indicate a bug.  If you see any internal errors please file a bug
-report.
+'Error:', warnings are preceded by 'Warning:'.  In addition, a malformed program
+could cause additional errors to be reported.
 
 Error Messages
 --------------
 
 .. glossary::
+   Input out of range: :samp:`input`
+     An input was given that can't be stored in one word.
+
+   Not enough inputs.
+     The program requires more input than was given.
+
    Program file not found: :samp:`program`
      The specified program file does not exist.
 
    Unexpected input type for input: :samp:`input` <type, :samp:`t`>
      Non-integer input was provided.  The input and its type are shown. 
-
-   Not enough inputs.
-     The program requires more input than was given.
 
 Warning Messages
 ----------------

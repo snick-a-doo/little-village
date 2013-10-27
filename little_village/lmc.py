@@ -67,7 +67,7 @@ class Program_File_Not_Found (Exception):
     def __init__ (self, file):
         self.file = file
     def __str__ (self):
-        return ('Program file not found: %s' % self.file)
+        return ('Program file not found: %s' % repr (self.file))
 
 class Bad_Instruction_Type (Exception):
     '''Exception raised when a non-integer is found in a program.'''
@@ -87,7 +87,7 @@ class Instruction_Out_Of_Range (Exception):
         self.max_instruction = max_instruction
     def __str__ (self):
         return ('Instruction out of range: %d at address %d.\n'
-                'Instructions must be from 0 to %d'
+                'Instructions must be from 0 to %d.'
                 % (self.instruction, self.address, self.max_input))
 
 class Input_Out_Of_Range (Exception):
@@ -97,7 +97,7 @@ class Input_Out_Of_Range (Exception):
         self.max_input = max_input
     def __str__ (self):
         return ('Input out of range: %d.\n'
-                'Input must be from 0 to %d'
+                'Input must be from 0 to %d.'
                 % (self.input, self.max_input))
 
 class Bad_Input_Type (Exception):
@@ -208,7 +208,7 @@ class LMC:
         '''Called by a client to fill the input register.'''
         self.waiting_for_input = False
         if not self._is_in_word_range (value):
-            raise Input_Out_Of_Range (response, self.word_max)
+            raise Input_Out_Of_Range (value, self.word_max)
         self.input = value;
         self._set_accumulator (self.input)
 

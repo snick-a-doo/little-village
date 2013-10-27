@@ -1,4 +1,21 @@
 # test-lmc.py - Unit tests for the LMC back-end and clients.
+#
+# Copyright 2013 Sam Varner
+#
+# This file is part of Little Village
+#
+# Little Village is free software: you can redistribute it and/or modify it
+# under the terms of the GNU General Public License as published by the Free
+# Software Foundation, either version 3 of the License, or (at your option) any
+# later version.
+#
+# Little Village is distributed in the hope that it will be useful, but WITHOUT
+# ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
+# FOR A PARTICULAR PURPOSE.  See the GNU General Public License for more
+# details.
+#
+# You should have received a copy of the GNU General Public License along with
+# Little Village.  If not, see <http://www.gnu.org/licenses/>.
 
 import os
 import sys
@@ -9,11 +26,8 @@ import lmc
 import batch
 import unittest
 
-'''
-Check the initial state of the computer.
-'''
-
 class Test_Initial (unittest.TestCase):
+    '''Check the initial state of the computer.'''
     def setUp (self):
         self.computer = lmc.LMC ()
 
@@ -37,15 +51,12 @@ class Test_Initial (unittest.TestCase):
         self.assertEqual (self.computer.accumulator, 0)
         self.assertEqual (self.computer.counter, 0)
 
-'''
-Test the computer with a small program.
-
-The program, "add", takes two values from input.  The input register is loaded
-before the program starts and will not change.  So we expect the output to be 2
-times the input.
-'''
-
 class Test_Run (unittest.TestCase):
+    '''Test the computer with a small program.
+
+    The program, "add", takes two values from input.  The input register is
+    loaded before the program starts and will not change.  So we expect the
+    output to be 2 times the input.'''
     def setUp (self):
         self.computer = lmc.LMC ()
         self.computer.load ('add')
@@ -70,52 +81,37 @@ class Test_Run (unittest.TestCase):
         # Should get the same answer the 2nd time.
         self.assertEqual (self.computer.output, 246)
 
-'''
-Test the batch client
-'''
-
-class Test_Batch (unittest.TestCase):
-    def setUp (self):
-        self.inputs = [1, 12, 25, 0]
-        self.client = batch.Batch_Client ('square', self.inputs)
-
-    def test_run (self):
-        self.client.run ()
-        for (x, y) in zip (self.inputs, self.client.outputs):
-            self.assertEqual (x**2, y)
-
-'''
-A client that breaks execution at a specific line.
-'''
-
 class Break_Client (batch.Batch_Client):
-    def __init__ (self, program, inputs, line):
-        batch.Batch_Client.__init__ (self, program, inputs)
+    '''A client that breaks execution at a specific line.'''
+    def __init__ (self, line):
+        batch.Batch_Client.__init__ (self)
         self.break_line = line
+
+    def run (self, program, inputs):
+        # Redefine run() so that it does not raise an exception.
+        self.inputs = inputs
+        self.computer.load (program)
+        self.computer.run ()
 
     def notify_step (self):
         # Return False to stop execution when the counter gets to break_line.
         return self.computer.counter != self.break_line
 
-'''
-Test breaking, stepping, and resuming.
-'''
-
 class Test_Break (unittest.TestCase):
+    '''Test breaking, stepping, and resuming.'''
     def setUp (self):
         self.inputs = [888, 99]
         self.line = 2 # Break before this (0-based) instruction.
-        self.client = Break_Client ('add', self.inputs, self.line)
+        self.client = Break_Client (self.line)
+        self.client.run ('add', self.inputs)
 
     def test_break_and_resume (self):
-        self.client.run ()
         self.assertEqual (self.line, self.client.computer.counter)
         self.assertEqual (self.client.outputs, [])
         self.client.computer.resume ()
         self.assertEqual (self.client.outputs, [987])
 
     def test_break_and_step (self):
-        self.client.run ()
         self.assertEqual (self.client.computer.input, 888)
         self.assertEqual (self.client.computer.accumulator, 888)
         self.assertEqual (self.client.outputs, [])
@@ -130,7 +126,6 @@ class Test_Break (unittest.TestCase):
         self.assertEqual (self.client.outputs, [987])
 
     def test_step_at_end (self):
-        self.client.run ()
         self.client.computer.resume ()
         self.assertEqual (self.client.computer.counter, 5)
         self.client.computer.step ()

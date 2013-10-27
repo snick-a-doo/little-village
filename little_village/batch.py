@@ -34,23 +34,24 @@ class Unused_Inputs (Exception):
     def __str__ (self):
         str = 'Unused inputs: '
         for a in self.inputs:
-            str += (a + ' ')
+            str += (repr (a) + ' ')
         return str
 
 class Batch_Client (lmc.LMC_Client):
-    '''A non-interactive LMC client.
-
-    All input is supplied when the object is created.  All program output is
-    stored in the member list "outputs".'''
-    def __init__ (self, program, inputs):
+    '''A non-interactive LMC client.'''
+    def __init__ (self):
         lmc.LMC_Client.__init__ (self)
-        self.inputs = inputs
+        self.inputs = []
         self.outputs = []
-        self.computer.load (program)
 
-    def run (self):
+    def run (self, program, inputs):
         '''Start execution of the program.'''
+        self.inputs = inputs
+        self.computer.load (program)
         self.computer.run ()
+        # Check for extra input.
+        if len (self.inputs) > 0:
+            raise Unused_Inputs (self.inputs)
 
     def notify_input (self):
         '''Provide input when needed by the program during execution.
@@ -81,29 +82,25 @@ def print_help (app):
     print
 
 def print_message (prefix, exception):
-    sys.stderr.write (prefix + ': ' + exception.__str__ () + '\n')
+    sys.stderr.write (prefix + ': ' + str (exception) + '\n')
 
 def run (program, args):
     if len (args) < 1:
         print_help (program)
-    else:
-        try:
-            client = Batch_Client (args [0], args [1:])
-            client.run ()
-            # Print the output.
-            for n in client.outputs:
-                print n
-            # Check for extra input.
-            if len (client.inputs) > 0:
-                raise Unused_Inputs (client.inputs)
-        except (lmc.Program_File_Not_Found,
-                lmc.Bad_Input_Type, 
-                Not_Enough_Inputs), error:
-            print_message ('Error', error)
-        except (Unused_Inputs), warning:
-            print_message ('Warning', warning)
-        except Exception, error:
-            print_message ('Internal', error)
+        return;
+
+    client = Batch_Client ()
+    try:
+        client.run (args [0], args [1:])
+    except (Unused_Inputs), warning:
+        print_message ('Warning', warning)
+    except Exception, error:
+        print_message ('Error', error)
+
+    # Print the output.
+    for n in client.outputs:
+        print n
+        
 
 if __name__ == '__main__':
     run (sys.argv [1:])
