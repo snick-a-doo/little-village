@@ -22,6 +22,7 @@ Contents:
    :maxdepth: 2
 
    installation
+   course
    users-guide
    programmers-guide
    lmc-reference
