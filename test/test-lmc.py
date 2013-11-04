@@ -19,12 +19,13 @@
 
 import os
 import sys
-# Allow importing modules from the source directory
-sys.path.insert (0, os.path.abspath('../little_village'))
-
-import lmc
-import batch
 import unittest
+
+# Allow importing modules from the source directory
+sys.path.insert (0, os.path.abspath ('..'))
+
+from little_village import lmc
+from little_village import batch
 
 class Test_Initial (unittest.TestCase):
     '''Check the initial state of the computer.'''

@@ -20,7 +20,6 @@
 # Little Village.  If not, see <http://www.gnu.org/licenses/>.
 
 import os
-import string
 import sys
 
 # Errors:
@@ -120,7 +119,7 @@ class Lookup:
         # The empty name has a value of zero.
         if name == '':
             return 0
-        if self.table.has_key (name):
+        if name in self.table:
             return self.table [name].get ()
         # If it's not empty and not in the dictionary return its integer
         # representation.  Will raise ValueError if it doesn't have one.
@@ -162,9 +161,9 @@ class Assembler:
         for line in program:
             line_number += 1
             # Remove comments.
-            line = string.split (line, self.comment)[0]
+            line = line.split (self.comment)[0]
             # Split the line into tokens.
-            tokens = string.split (line)
+            tokens = line.split ()
             # Ignore empty lines.
             if tokens == []:
                 continue
@@ -187,11 +186,11 @@ class Assembler:
         label = ''
         mnemonic = ''
         arguments = []
-        if self.opcodes.has_key (tokens[0]):
+        if tokens[0] in self.opcodes:
             mnemonic = tokens[0]
             if n > 1:
                 arguments = tokens[1:]
-        elif (n > 1) and self.opcodes.has_key (tokens[1]):
+        elif (n > 1) and tokens[1] in self.opcodes:
             label = tokens[0]
             mnemonic = tokens[1]
             if n > 2:
@@ -199,7 +198,7 @@ class Assembler:
         else:
             self.messages.add (True, 'Unknown mnemonic', line_number, line)
 
-        if len (arguments) > 0 and self.opcodes.has_key (arguments[0]):
+        if len (arguments) > 0 and arguments[0] in self.opcodes:
             self.messages.add (True, 
                                'Label matches a mnemonic',
                                line_number,
@@ -257,16 +256,17 @@ class Assembler:
             stream.write ('%03d\n' % line)
 
 def print_help (app):
-    print 'Convert a Little Man Computer assembly program to machine code'
-    print
-    print 'Usage: %s <input-file> [<output-file>]' % app
-    print
-    print 'where <input-file> is an LMC assembly language file and the machine'
-    print 'code is written to <output-file>.  If <output-file> is not given then'
-    print 'the output file name is constructed by removing the extension from'
-    print '<input-file>.  An error is signaled and nothing is written if'
-    print '<output-file> is the same as <input-file>.'
-    print
+    print (
+'''Convert a Little Man Computer assembly program to machine code
+
+Usage: %s <input-file> [<output-file>]
+
+where <input-file> is an LMC assembly language file and the machine
+code is written to <output-file>.  If <output-file> is not given then
+the output file name is constructed by removing the extension from
+<input-file>.  An error is signaled and nothing is written if
+<output-file> is the same as <input-file>.
+''' % app)
 
 def run (args):
     n_args = len (sys.argv)

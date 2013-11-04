@@ -24,15 +24,14 @@ sys.path.insert (0, os.path.abspath('../little_village'))
 
 import assemble
 import unittest
-import string
-import StringIO
+import io
 
 class Test_Assemble (unittest.TestCase):
     def setUp (self):
         self.asm = assemble.Assembler ()
 
     def messages (self):
-        messages = StringIO.StringIO ()
+        messages = io.StringIO ()
         self.asm.messages.write (messages)
         return messages.getvalue ()
 
@@ -104,7 +103,7 @@ class Test_Assemble (unittest.TestCase):
         self.asm.messages.max_errors = 4
         program = [ 'MOO', 'WEE', 'ZIP', 'TOP', 'BAG' ]
         self.assertFalse (self.asm.assemble (program))
-        messages = string.split (self.messages (), '\n')
+        messages = self.messages ().split ('\n')
         self.assertEqual (messages[0], 'Error: Unknown mnemonic')
         self.assertEqual (messages[1], '  line 1  : MOO')
         self.assertEqual (messages[2], 'Error: Unknown mnemonic')
@@ -120,7 +119,7 @@ class Test_Assemble (unittest.TestCase):
     def test_not_enough_arguments (self):
         program = [ 'ADD', 'SUB', 'STA', 'LDA', 'BRA', 'BRZ', 'BRP', 'HLT', 'DAT' ]
         self.assertFalse (self.asm.assemble (program))
-        messages = string.split (self.messages (), '\n')
+        messages = self.messages ().split ('\n')
         self.assertEqual (messages[0], 'Error: ADD requires 1 argument, 0 given')
         self.assertEqual (messages[1], '  line 1  : ADD')
         self.assertEqual (messages[2], 'Error: SUB requires 1 argument, 0 given')

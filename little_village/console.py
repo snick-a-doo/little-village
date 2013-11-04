@@ -20,19 +20,18 @@
 # Little Village.  If not, see <http://www.gnu.org/licenses/>.
 
 import os
-import string
 import sys
 
 from gi.repository import Gtk
 from gi.repository import Gdk
 
-import lmc
+from . import lmc
 
 class Register (Gtk.Entry):
-    """A numeric entry field for LMC registers.
+    '''A numeric entry field for LMC registers.
 
 \param chars The maximum number of characters for the field
-\param icon If true display an icon that's shown or hidden with set_ready()"""
+\param icon If true display an icon that's shown or hidden with set_ready()'''
     def __init__ (self, chars = 3, icon = False):
         Gtk.Entry.__init__ (self, xalign = 1.0)
         self.chars = chars
@@ -173,7 +172,7 @@ class App (lmc.LMC_Client, Gtk.Window):
         if response == Gtk.ResponseType.OK:
             try:
                 self.load_file (chooser.get_filename ())
-            except lmc.Bad_Program, (p):
+            except lmc.Bad_Program as p:
                 error = Gtk.MessageDialog (self, 
                                            Gtk.DialogFlags.DESTROY_WITH_PARENT,
                                            Gtk.MessageType.ERROR,
@@ -220,12 +219,11 @@ class App (lmc.LMC_Client, Gtk.Window):
 
     def notify_input (self):
         buffer = self.input_stack.get_buffer ()
-        text = string.split (buffer.get_text (buffer.get_start_iter (),
-                                              buffer.get_end_iter (), 
-                                              True),
-                             '\n')
+        text = buffer.get_text (buffer.get_start_iter (),
+                                buffer.get_end_iter (), 
+                                True).split ('\n')
         if len (text) > 0 and text [0] != '':
-            buffer.set_text (string.join (text [1:], '\n'))
+            buffer.set_text ('\n'.join (text [1:]))
             return int (text [0])
         else:
             # Put an icon in the text field to indicate that we're ready for
@@ -242,12 +240,13 @@ class App (lmc.LMC_Client, Gtk.Window):
         self.run.set_sensitive (True)
 
 def print_help (app):
-    print 'GUI for the Little Man Computer'
-    print
-    print 'Usage: %s [<program-name>]' % app
-    print
-    print 'where <program-name> is the name of a machine-code program file.'
-    print
+    print (
+'''GUI for the Little Man Computer
+
+Usage: %s [<program-name>]
+
+where <program-name> is the name of a machine-code program file.
+''' % app)
 
 def run (program, args):
     if len (args) > 1:

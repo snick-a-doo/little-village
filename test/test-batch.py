@@ -20,22 +20,22 @@
 import os
 import sys
 # Allow importing modules from the source directory
-sys.path.insert (0, os.path.abspath('../little_village'))
+sys.path.insert (0, os.path.abspath ('..'))
 
 import re
 import string
-import StringIO
+import io
 import unittest
 
-import batch
-import lmc
+from little_village import batch
+from little_village import lmc
 
 class Test_Batch (unittest.TestCase):
     def setUp (self):
         self.stdout = sys.stdout
         self.stderr = sys.stderr
-        sys.stdout = StringIO.StringIO ()
-        sys.stderr = StringIO.StringIO ()
+        sys.stdout = io.StringIO ()
+        sys.stderr = io.StringIO ()
 
     def tearDown (self):
         sys.stdout.close ()
@@ -68,7 +68,7 @@ class Test_Batch (unittest.TestCase):
         self.assertEqual (sys.stdout.getvalue (), '')
         self.assertEqual (sys.stderr.getvalue (),
                           "Error: Unexpected input type for input: "
-                          "waffles <type 'str'>.\n"
+                          "waffles <class 'str'>.\n"
                           "Should be bool, or something that can be "
                           "converted to an integer.\n")
 
