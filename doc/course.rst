@@ -184,4 +184,25 @@ When we run the computer with :samp:`901 306 901 106 90 200` in its first six
 memory locations it knows exactly what to do.  But it's hard for people to
 understand.  This makes it hard to write and change machine language programs.
 
+Assembly language has three features that make programming a little easier.
+# Names are used in place of the operation codes.
+# Memory locations can be labeled.
+# Comments can be written to help explain the code.
+
+Here's an assembly language version of our addition program::
+
+ ;;; 
+ ;;; Add two numbers
+ ;;; 
+         INP         ; Get the first number
+         STA first   ; Store it
+         INP         ; Get the second number
+         ADD first   ; Add the first to it
+         OUT         ; Give the result
+         HLT
+ first   DAT         ; Storage for the first number
+
+Everything after a :samp:`;` on a line is a *comment*.  Comments are messages to
+anyone who might need to understand the program.  Often they are messages to
+yourself.  
 
