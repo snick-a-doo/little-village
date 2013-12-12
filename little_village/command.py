@@ -19,45 +19,46 @@
 # You should have received a copy of the GNU General Public License along with
 # Little Village.  If not, see <http://www.gnu.org/licenses/>.
 
-import assemble
-import batch
-import prompt
-import console
+from . import assemble
+from . import batch
+from . import prompt
+from . import console
+
+import sys
 
 # The name of each imported module above must be in this list.
 commands = ['assemble', 'batch', 'prompt', 'console', 'help', 'version']
 
-import string
-import sys
-
 def find_command (name):
     matches = []
     # Strip leading dashes, e.g. '--version' becomes 'version'.
-    name = string.split (name, '-')[-1]
+    name = name.split ('-')[-1]
     for cmd in commands:
-        if string.find (cmd, name) == 0:
+        if cmd.find (name) == 0:
             matches.append (cmd)
     return matches [0] if len (matches) == 1 else 'help'
 
 def print_help (app):
-    print 'Master command for the Little Man Computer'
-    print
-    print 'Usage: %s <command> [<arguments>]' % app
-    print
-    print 'where <command> is one of'
+    print (
+'''Master command for the Little Man Computer
+
+Usage: %s <command> [<arguments>]
+
+where <command> is one of''' % app)
     for cmd in commands:
-        print '  %s' % cmd
-    print
-    print 'For help on a command, use'
-    print '  $ %s help <command>' % app
-    print
+        print ('  %s' % cmd)
+    print(
+'''
+For help on a command, use
+  $ %s help <command>
+''' % app)
 
 def print_version ():
-    print 'Little-village version 0.1'
-    print 'Copyright (C) 2013 Sam Varner <snick-a-doo@comcast.net>'
-    print 'This program is free software; you are welcome to redistribute it'
-    print 'under certain conditions.'
-    print
+    print ('''
+Little-village version 0.1
+Copyright (C) 2013 Sam Varner <snick-a-doo@comcast.net>
+This program is free software; you are welcome to redistribute it
+under certain conditions.''')
 
 def run ():
     command = 'help' if len (sys.argv) < 2 else find_command (sys.argv [1])
@@ -68,7 +69,7 @@ def run ():
         # If "help <command>" was entered record that help was requested and get
         # the command name.
         need_help = True
-        command = rest [0]
+        command = find_command (rest [0])
 
     if command == 'help':
         # If the command is still "help" show the top-level help message.

@@ -19,8 +19,7 @@
 # You should have received a copy of the GNU General Public License along with
 # Little Village.  If not, see <http://www.gnu.org/licenses/>.
 
-import lmc
-import string
+from . import lmc
 
 class Prompt_Client (lmc.LMC_Client):
     prompt = 'LMC> '
@@ -29,7 +28,7 @@ class Prompt_Client (lmc.LMC_Client):
         return int (raw_input ('  input: '))
 
     def notify_output (self, out):
-        print out
+        print (out)
         return True
 
     def run (self):
@@ -39,13 +38,13 @@ class Prompt_Client (lmc.LMC_Client):
         except EOFError:
             # Quit on Ctrl+D
             pass
-        print 'bye'
+        print ('bye')
 
     def read (self):
         response = raw_input (Prompt_Client.prompt);
 
     def parse (self, input):
-        tokens = string.split (input)
+        tokens = input.split ()
 
         if len (tokens) == 0:
             return True
@@ -62,15 +61,16 @@ class Prompt_Client (lmc.LMC_Client):
         elif command == 'run':
             self.computer.run ()
         elif command == 'show':
-            print self.computer
+            print (self.computer)
 
         return True
 
 def print_help (app):
-    print 'Command prompt for the Little Man Computer'
-    print
-    print 'Usage: %s' % app
-    print
+    print (
+'''Command prompt for the Little Man Computer
+
+Usage: %s
+''' % app)
 
 def run (program, args):
     if len (args) > 0:

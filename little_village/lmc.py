@@ -18,7 +18,6 @@
 # Little Village.  If not, see <http://www.gnu.org/licenses/>.
 
 import math
-import string
 
 class LMC_Client:
     '''A minimal client for an LMC object.
@@ -172,19 +171,18 @@ class LMC:
     def load (self, file):
         '''Load a machine-language program from a file'''
         try:
-            f = open (file)
+            with open (file) as f:
+                program = f.readlines ()
+                for i in range (len (program)):
+                    try:
+                        code = int (program [i])
+                        if not self._is_in_word_range (code):
+                            raise Instruction_Out_Of_Range (code, i, self.word_max)
+                        self.memory [i] = code
+                    except ValueError:
+                        raise Bad_Instruction_Type (code, i);
         except IOError:
             raise Program_File_Not_Found (file)
-
-        program = f.readlines ()
-        for i in range (len (program)):
-            try:
-                code = int (program [i])
-                if not self._is_in_word_range (code):
-                    raise Instruction_Out_Of_Range (code, i, self.word_max)
-                self.memory [i] = code
-            except ValueError:
-                raise Bad_Instruction_Type (code, i);
 
     def run (self):
         '''Start the program from the beginning.
@@ -234,7 +232,7 @@ class LMC:
         opcode = self.memory [self.counter]
         self.counter += 1
 
-        op = opcode / self.memory_size
+        op = opcode // self.memory_size
         arg = opcode - self.memory_size * op
 
         go_on = True;

@@ -19,7 +19,7 @@
 # You should have received a copy of the GNU General Public License along with
 # Little Village.  If not, see <http://www.gnu.org/licenses/>.
 
-import lmc
+from . import lmc
 import sys
 
 class Not_Enough_Inputs (Exception):
@@ -73,13 +73,14 @@ class Batch_Client (lmc.LMC_Client):
         return True
 
 def print_help (app):
-    print 'Execute a Little Man Computer program'
-    print
-    print 'Usage: %s <program-name> [<input>...]' % app
-    print
-    print 'where <program-name> is the name of a machine-code program file'
-    print 'and <input>s are any integer inputs needed by the program.'
-    print
+    print (
+'''Execute a Little Man Computer program
+
+Usage: %s <program-name> [<input>...]
+
+where <program-name> is the name of a machine-code program file
+and <input>s are any integer inputs needed by the program.
+''' % app)
 
 def print_message (prefix, exception):
     sys.stderr.write (prefix + ': ' + str (exception) + '\n')
@@ -92,14 +93,14 @@ def run (program, args):
     client = Batch_Client ()
     try:
         client.run (args [0], args [1:])
-    except (Unused_Inputs), warning:
+    except Unused_Inputs as warning:
         print_message ('Warning', warning)
-    except Exception, error:
+    except Exception as error:
         print_message ('Error', error)
 
     # Print the output.
     for n in client.outputs:
-        print n
+        print (n)
         
 
 if __name__ == '__main__':
