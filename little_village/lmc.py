@@ -174,13 +174,16 @@ class LMC:
             with open (file) as f:
                 program = f.readlines ()
                 for i in range (len (program)):
-                    try:
-                        code = int (program [i])
-                        if not self._is_in_word_range (code):
-                            raise Instruction_Out_Of_Range (code, i, self.word_max)
-                        self.memory [i] = code
-                    except ValueError:
-                        raise Bad_Instruction_Type (code, i);
+                    line = program [i].strip ()
+                    # Ignore blank lines.
+                    if len (line) > 0:
+                        try:
+                            code = int (line)
+                            if not self._is_in_word_range (code):
+                                raise Instruction_Out_Of_Range (code, i, self.word_max)
+                            self.memory [i] = code
+                        except ValueError:
+                            raise Bad_Instruction_Type (code, i);
         except IOError:
             raise Program_File_Not_Found (file)
 

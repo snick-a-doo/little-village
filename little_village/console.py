@@ -170,14 +170,15 @@ class App (lmc.LMC_Client, Gtk.Window):
                                                     Gtk.ResponseType.OK))
         response = chooser.run ()
         if response == Gtk.ResponseType.OK:
+            name = chooser.get_filename ()
             try:
-                self.load_file (chooser.get_filename ())
-            except lmc.Bad_Program as p:
+                self.load_file (name)
+            except:
                 error = Gtk.MessageDialog (self, 
                                            Gtk.DialogFlags.DESTROY_WITH_PARENT,
                                            Gtk.MessageType.ERROR,
                                            Gtk.ButtonsType.OK,
-                                           'Could not load program %s' % p.file)
+                                           'Could not load program "%s"' % name)
                 error.format_secondary_text ('Not an LMC machine code file.')
                 error.run ()
                 error.destroy ()

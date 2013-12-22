@@ -8,3 +8,6 @@ _build/
 _images/
 _sources/
 MANIFEST
+*.html
+*.doctree
+*.pickle
