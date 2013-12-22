@@ -1,5 +1,0 @@
-==========
- Back End
-==========
-
-Emulator internals.
